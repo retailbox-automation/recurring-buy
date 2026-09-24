@@ -68,6 +68,7 @@ The recipe, its pinned version and the steps for npm-based projects are in [.har
 ```
 packages/hardhat   contracts, deploy scripts, tests (Hardhat, hardhat-deploy)
 packages/nextjs    Next.js App Router app, wallet connect, Debug Contracts, block explorer
+packages/saucerswap  SaucerSwap V2 client (quotes, swap calldata, HTS association, gas)
 tools/gate         eligibility gate scripts and tests
 .harness           Hedera Harness recipe and validators
 template.json      manifest read by create-scaffold-hbar

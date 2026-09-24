@@ -23,7 +23,7 @@ Changed in starter files:
 - `.gitmodules` removed: it listed Foundry submodules, and this template is Hardhat-only.
 - `.gitignore`: env files and Hedera Harness runtime directories.
 - `README.md`, `AGENTS.md`, `CLAUDE.md` rewritten.
-- Root `package.json`: `gate:*`, `harness:run` and `hardhat:deploy:testnet` scripts; `hedera-harness` and `zod` dev dependencies.
+- Root `package.json`: `gate:*`, `harness:run` and `hardhat:deploy:testnet` scripts; `hedera-harness` and `zod` dev dependencies; a third workspace package and its `saucerswap:*` scripts (see Added).
 - `packages/nextjs/next.config.ts`: the optional `@x402/*` imports of `@coinbase/cdp-sdk` resolve to empty modules, so npm scaffolds build (the upstream blank starter fails `next build` on npm).
 
 Added:
@@ -33,6 +33,7 @@ Added:
 - `.github/workflows/gate.yml` (the same gate in CI).
 - `.gitleaks.toml` (gitleaks defaults, minus the vendored Yarn release).
 - `.harness/` (Hedera Harness v3 recipe and validators).
+- `packages/saucerswap/` (`@sh/saucerswap`): a framework-agnostic SaucerSwap V2 client — addresses, quotes, swap calldata, HTS association, gas helpers. Not wired into `packages/nextjs` yet (no concept UI exists); see its own README.
 
 Third-party code inside our files:
 

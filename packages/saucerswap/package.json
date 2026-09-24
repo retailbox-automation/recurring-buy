@@ -1,0 +1,25 @@
+{
+  "name": "@sh/saucerswap",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "SaucerSwap V2 client for Hedera scaffold-hbar templates: quotes, swap calldata, HTS token association, gas helpers.",
+  "main": "dist/src/index.js",
+  "types": "dist/src/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "check-types": "tsc -p tsconfig.json --noEmit",
+    "test": "tsc -p tsconfig.json && node --test dist/test",
+    "test:live": "tsc -p tsconfig.json && SAUCERSWAP_LIVE=1 node --test dist/test",
+    "lint": "eslint"
+  },
+  "dependencies": {
+    "viem": "2.39.0"
+  },
+  "devDependencies": {
+    "@types/node": "^18.19.50",
+    "eslint": "^9.23.0",
+    "typescript": "^5.8.2",
+    "typescript-eslint": "~8.27.0"
+  }
+}

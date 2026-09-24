@@ -4,7 +4,7 @@ Briefing for coding agents (Claude Code, Cursor, Codex) working in this reposito
 
 ## What this is
 
-A scaffold-hbar template for Hedera: `packages/nextjs` (Next.js App Router, RainbowKit, wagmi, viem, DaisyUI) and `packages/hardhat` (Hardhat, hardhat-deploy). It is Hardhat-only; there is no Foundry package. The use case is not implemented yet: the contracts are the starter samples `HederaToken` (ERC-20) and `HtsTokenCreator` (HTS precompile at `0x167`).
+A scaffold-hbar template for Hedera: `packages/nextjs` (Next.js App Router, RainbowKit, wagmi, viem, DaisyUI), `packages/hardhat` (Hardhat, hardhat-deploy), and `packages/saucerswap` (`@sh/saucerswap`, a framework-agnostic SaucerSwap V2 client — see its README). It is Hardhat-only; there is no Foundry package. The use case is not implemented yet: the contracts are the starter samples `HederaToken` (ERC-20) and `HtsTokenCreator` (HTS precompile at `0x167`).
 
 ## Package manager
 
@@ -18,11 +18,12 @@ yarn hardhat:chain               # local Hedera-forked node on 8545
 yarn hardhat:account:generate    # encrypted deployer key in packages/hardhat/.env
 yarn hardhat:deploy:testnet      # deploy to Hedera testnet
 
-yarn lint                        # both packages; the gate adds --max-warnings=0
+yarn lint                        # all three packages; the gate adds --max-warnings=0
 yarn next:check-types
 yarn hardhat:compile
 yarn next:build
 yarn hardhat:test
+yarn saucerswap:test             # unit tests only; saucerswap:test:live also calls testnet
 ```
 
 To deploy to the local node, pass `--network localhost` to `hardhat:deploy` (with `--` first in an npm-based project). Without `--network` it targets the in-process `hardhat` network, not the node started by `hardhat:chain`. Mainnet is `hederaMainnet`.
