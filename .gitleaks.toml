@@ -1,0 +1,8 @@
+# gitleaks: default rules, except inside the vendored Yarn release and plugins
+# (minified third-party code that trips the generic-api-key rule).
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Vendored Yarn release and plugins"
+paths = ['''^\.yarn/(releases|plugins)/''']

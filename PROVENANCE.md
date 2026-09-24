@@ -30,6 +30,7 @@ Added:
 - `template.json` (manifest for create-scaffold-hbar).
 - `tools/gate/` (eligibility gate scripts and their tests).
 - `.github/workflows/gate.yml` (the same gate in CI).
+- `.gitleaks.toml` (gitleaks defaults, minus the vendored Yarn release).
 - `.harness/` (Hedera Harness v3 recipe and validators).
 
 Third-party code inside our files:

@@ -254,7 +254,9 @@ fi
 g7_note="$(head -n 1 "$LOGS/secrets.log")"
 [[ $G7_STATUS == FAIL ]] && cat "$LOGS/secrets.log" >&2
 if command -v gitleaks >/dev/null 2>&1; then
-  if gitleaks git --no-banner --redact --log-opts=--all "$WORK/src.git" >"$LOGS/gitleaks.log" 2>&1; then
+  GITLEAKS_ARGS=(git --no-banner --redact --log-opts=--all)
+  [[ -f "$SRC/.gitleaks.toml" ]] && GITLEAKS_ARGS+=(--config "$SRC/.gitleaks.toml")
+  if gitleaks "${GITLEAKS_ARGS[@]}" "$WORK/src.git" >"$LOGS/gitleaks.log" 2>&1; then
     g7_note="$g7_note; gitleaks $(gitleaks version): no leaks in history"
   else
     G7_STATUS=FAIL; g7_note="$g7_note; gitleaks reported leaks"; cat "$LOGS/gitleaks.log" >&2
