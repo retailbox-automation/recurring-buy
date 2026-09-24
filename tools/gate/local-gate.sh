@@ -54,7 +54,12 @@ trap cleanup EXIT
 
 # Commands run with a minimal environment so nothing from this shell (tokens,
 # NEXT_PUBLIC_* values, npm_config_*) can make a broken template look healthy.
-CLEAN_ENV=(env -i "PATH=$PATH" "HOME=$HOME" "TMPDIR=${TMPDIR:-/tmp}" "LANG=${LANG:-en_US.UTF-8}")
+# npm also gets an empty user config: a setting in ~/.npmrc can break or rescue an install
+# (npm@12 with `allow-scripts` in ~/.npmrc fails every install the CLI starts, EALLOWSCRIPTS),
+# and a judge's machine has neither.
+: >"$WORK/empty-npmrc"
+CLEAN_ENV=(env -i "PATH=$PATH" "HOME=$HOME" "TMPDIR=${TMPDIR:-/tmp}" "LANG=${LANG:-en_US.UTF-8}"
+  "NPM_CONFIG_USERCONFIG=$WORK/empty-npmrc")
 [[ -n "${COREPACK_HOME:-}" ]] && CLEAN_ENV+=("COREPACK_HOME=$COREPACK_HOME")
 if [[ -z "$(git config user.name 2>/dev/null)" || -z "$(git config user.email 2>/dev/null)" ]]; then
   # create-scaffold-hbar refuses to run without a git identity; supply one for this run only.
