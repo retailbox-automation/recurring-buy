@@ -31,7 +31,7 @@
             },
             {
               "label": "Deploy the contracts to Hedera testnet",
-              "command": "{run:framework:deploy} --network hederaTestnet"
+              "command": "{run:framework:deploy:testnet}"
             },
             {
               "label": "Develop with Hedera Harness",

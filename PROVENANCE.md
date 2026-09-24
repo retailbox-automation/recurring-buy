@@ -23,7 +23,7 @@ Changed in starter files:
 - `.gitmodules` removed: it listed Foundry submodules, and this template is Hardhat-only.
 - `.gitignore`: env files and Hedera Harness runtime directories.
 - `README.md`, `AGENTS.md`, `CLAUDE.md` rewritten.
-- Root `package.json`: `gate:*` and `harness:run` scripts; `hedera-harness` and `zod` dev dependencies.
+- Root `package.json`: `gate:*`, `harness:run` and `hardhat:deploy:testnet` scripts; `hedera-harness` and `zod` dev dependencies.
 - `packages/nextjs/next.config.ts`: the optional `@x402/*` imports of `@coinbase/cdp-sdk` resolve to empty modules, so npm scaffolds build (the upstream blank starter fails `next build` on npm).
 
 Added:

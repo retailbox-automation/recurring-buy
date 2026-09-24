@@ -8,24 +8,24 @@ A scaffold-hbar template for Hedera: `packages/nextjs` (Next.js App Router, Rain
 
 ## Package manager
 
-Use the one the project was created with (`packageManager` in the root `package.json`, or the lockfile). Examples use Yarn; in an npm project run `npm run <script>` and put `--` before extra arguments (`npm run next:lint -- --max-warnings=0`).
+Use the one the project was created with (`packageManager` in the root `package.json`, or the lockfile). Examples use Yarn. In an npm-based project scripts run as `npm run <script>`, and extra arguments need `--` first: `npm run hardhat:deploy -- --network localhost`.
 
 ## Commands
 
 ```bash
-yarn next:dev                                  # frontend, http://localhost:3000
-yarn hardhat:chain                             # local Hedera-forked node on 8545
-yarn hardhat:deploy --network localhost        # deploy to that node
-yarn hardhat:deploy --network hederaTestnet    # deploy to testnet (hederaMainnet for mainnet)
-yarn hardhat:account:generate                  # encrypted deployer key in packages/hardhat/.env
+yarn next:dev                    # frontend, http://localhost:3000
+yarn hardhat:chain               # local Hedera-forked node on 8545
+yarn hardhat:account:generate    # encrypted deployer key in packages/hardhat/.env
+yarn hardhat:deploy:testnet      # deploy to Hedera testnet
 
-yarn next:lint --max-warnings=0 && yarn hardhat:lint --max-warnings=0
+yarn lint                        # both packages; the gate adds --max-warnings=0
 yarn next:check-types
-yarn hardhat:compile && yarn next:build
+yarn hardhat:compile
+yarn next:build
 yarn hardhat:test
 ```
 
-`yarn hardhat:deploy` without `--network` targets the in-process `hardhat` network, not the node started by `hardhat:chain`.
+To deploy to the local node, pass `--network localhost` to `hardhat:deploy` (with `--` first in an npm-based project). Without `--network` it targets the in-process `hardhat` network, not the node started by `hardhat:chain`. Mainnet is `hederaMainnet`.
 
 ## Where things live
 
@@ -42,6 +42,7 @@ yarn hardhat:test
 - Core routes are listed in `.harness/validators/playwright-smoke.yaml`. Add a route there when you add a page that matters.
 - Keep `template.json` in step with `packages/`: its capabilities must name only packages that exist. Run `yarn gate:manifest` after editing it.
 - Lint allows zero warnings. Prefer `type` over `interface`; comments should add information.
+- Write docs for both package managers. In npm-based projects create-scaffold-hbar rewrites every `yarn`/`Yarn` in text files (except under `.harness/`) to `npm`, then turns any `npm <word>` into `npm run <word>`, prose included. So follow a package-manager name with punctuation or a backtick, not a word; do not append flags to a `yarn <script>` example (`npm` needs `--` before flags), and give the command its own script in `package.json` instead, as `hardhat:deploy:testnet` does.
 
 ## Checking your work
 
@@ -49,11 +50,11 @@ yarn hardhat:test
 yarn gate:test                                   # gate tools: every check has a must-fail twin
 yarn gate:manifest                               # template.json vs the create-scaffold-hbar 0.4.0 schema
 yarn gate:secrets                                # secrets and .env in the tree and git history
-yarn gate:local <owner/repo[#branch]> yarn       # full gate on a fresh scaffold from GitHub (10+ min)
+bash tools/gate/local-gate.sh <owner/repo[#branch]> <package-manager>   # full gate on a fresh scaffold (about 2 min)
 npx hedera-harness validate                      # install, lint, build, test, then renders core routes
 ```
 
-`gate:local` reads the template from GitHub, so push the branch first and pass it as `owner/repo#branch`.
+`local-gate.sh` reads the template from GitHub, so push the branch first and pass it as `owner/repo#branch`.
 
 ## Hedera Harness
 
