@@ -22,4 +22,15 @@ node_modules
 # cli
 dist
 
+# env files (only .env.example is committed)
 .env
+.env.*
+!.env.example
+
+# hedera-harness runtime (the recipe in .harness/ is tracked)
+.harness/runs/
+.harness/runtime/
+.harness/cache/
+.skill-cache/
+.harness-skills/
+.harness-context/
