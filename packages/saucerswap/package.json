@@ -4,11 +4,23 @@
   "version": "0.1.0",
   "type": "module",
   "description": "SaucerSwap V2 client for Hedera scaffold-hbar templates: quotes, swap calldata, HTS token association, gas helpers.",
-  "main": "dist/src/index.js",
-  "types": "dist/src/index.d.ts",
+  "main": "dist/cjs/index.js",
+  "types": "dist/cjs/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/src/index.d.ts",
+        "default": "./dist/src/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/index.d.ts",
+        "default": "./dist/cjs/index.js"
+      }
+    }
+  },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "check-types": "tsc -p tsconfig.json --noEmit",
+    "build": "tsc -p tsconfig.json && tsc -p tsconfig.cjs.json && node scripts/write-cjs-package-json.mjs",
+    "check-types": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.cjs.json --noEmit",
     "test": "tsc -p tsconfig.json && node --test dist/test",
     "test:live": "tsc -p tsconfig.json && SAUCERSWAP_LIVE=1 node --test dist/test",
     "lint": "eslint"
