@@ -1,0 +1,20 @@
+# Core routes. tools/gate/local-gate.sh reads the same `path:` entries for its HTTP probe.
+server:
+  command: yarn next:start
+  url: http://localhost:3000
+  timeoutMs: 180000
+
+defaults:
+  timeoutMs: 60000
+
+routes:
+  - name: home
+    path: /
+  - name: debug-contracts
+    path: /debug
+  - name: block-explorer
+    path: /blockexplorer
+
+forbidden:
+  visibleText:
+    - "Application error"

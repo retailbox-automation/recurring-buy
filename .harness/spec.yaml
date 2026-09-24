@@ -1,0 +1,24 @@
+schemaVersion: 3
+
+name: countersign
+description: >-
+  Hedera scaffold-hbar template (work in progress). Until the feature increments
+  are written, this recipe is the template's own quality check: install, lint,
+  build, test, no secrets, and the core routes render.
+
+# Yarn recipe. create-scaffold-hbar does not rewrite .harness/ for npm projects;
+# in an npm project point validators.commands at .harness/validators/npm.json
+# and use `npm install` / `npm run next:build` below.
+baseline:
+  commands:
+    - name: install
+      command: yarn install
+    - name: build
+      command: yarn next:build
+
+# prd: feature increments (.harness/prds/NN-*.md) are added here once the concept is chosen.
+
+validators:
+  static: .harness/validators/static.json
+  commands: .harness/validators/yarn.json
+  playwright: .harness/validators/playwright-smoke.yaml

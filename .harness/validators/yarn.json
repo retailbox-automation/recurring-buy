@@ -1,0 +1,22 @@
+{
+  "name": "countersign-yarn",
+  "description": "Install, lint, build and test with Yarn. Keep the install step named \"install\" so the harness can skip it when dependencies are unchanged.",
+  "requiresNoSecrets": true,
+  "forbiddenCommands": ["npm install", "npm run", "pnpm install", "pnpm run"],
+  "commands": [
+    { "name": "install", "command": "yarn install", "timeoutMs": 600000, "purpose": "Install workspace dependencies." },
+    {
+      "name": "lint",
+      "command": "yarn next:lint --max-warnings=0 && yarn hardhat:lint --max-warnings=0",
+      "timeoutMs": 300000,
+      "purpose": "Lint both packages with zero warnings allowed."
+    },
+    {
+      "name": "build",
+      "command": "yarn hardhat:compile && yarn next:build",
+      "timeoutMs": 600000,
+      "purpose": "Compile contracts and build the Next.js app (includes type checks)."
+    },
+    { "name": "test", "command": "yarn hardhat:test", "timeoutMs": 600000, "purpose": "Contract tests." }
+  ]
+}

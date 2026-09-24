@@ -1,0 +1,27 @@
+{
+  "name": "countersign-npm",
+  "description": "The same checks for a project scaffolded with --package-manager npm. Point validators.commands at this file in such a project.",
+  "requiresNoSecrets": true,
+  "forbiddenCommands": ["yarn install", "yarn run", "pnpm install", "pnpm run"],
+  "commands": [
+    {
+      "name": "install",
+      "command": "npm install --legacy-peer-deps",
+      "timeoutMs": 600000,
+      "purpose": "Install workspace dependencies the way create-scaffold-hbar does."
+    },
+    {
+      "name": "lint",
+      "command": "npm run next:lint -- --max-warnings=0 && npm run hardhat:lint -- --max-warnings=0",
+      "timeoutMs": 300000,
+      "purpose": "Lint both packages with zero warnings allowed."
+    },
+    {
+      "name": "build",
+      "command": "npm run hardhat:compile && npm run next:build",
+      "timeoutMs": 600000,
+      "purpose": "Compile contracts and build the Next.js app (includes type checks)."
+    },
+    { "name": "test", "command": "npm run hardhat:test", "timeoutMs": 600000, "purpose": "Contract tests." }
+  ]
+}

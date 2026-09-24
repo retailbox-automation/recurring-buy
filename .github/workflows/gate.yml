@@ -1,0 +1,93 @@
+name: Template gate
+
+# Scaffolds this template from GitHub with create-scaffold-hbar and runs the
+# eligibility gate (tools/gate/local-gate.sh) on every Node / package manager leg.
+# create-scaffold-hbar deletes template.json from the projects it creates, so in
+# those projects the detect job finds no manifest and the gate jobs are skipped.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  detect:
+    runs-on: ubuntu-latest
+    outputs:
+      is-template: ${{ steps.check.outputs.is-template }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: check
+        run: |
+          if [ -f template.json ]; then echo "is-template=true"; else echo "is-template=false"; fi >> "$GITHUB_OUTPUT"
+
+  checks:
+    needs: detect
+    if: needs.detect.outputs.is-template == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # the secret scans read the whole history
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20.18.3"
+      - run: corepack enable
+      - run: yarn install --immutable
+      - name: Gate tool tests
+        run: yarn gate:test
+      - name: template.json against the create-scaffold-hbar 0.4.0 schema
+        run: yarn gate:manifest
+      - name: Secret scan (regex, tree and full history)
+        run: yarn gate:secrets
+      - name: Secret scan (gitleaks 8.30.1, full history)
+        run: |
+          curl -sSfL -o gitleaks.tar.gz https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz
+          echo "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb  gitleaks.tar.gz" | sha256sum -c -
+          tar -xzf gitleaks.tar.gz gitleaks
+          ./gitleaks git --no-banner --redact --log-opts=--all .
+
+  fresh-scaffold:
+    needs: [detect, checks]
+    if: needs.detect.outputs.is-template == 'true'
+    name: scaffold · node ${{ matrix.node }} · ${{ matrix.pm == 'npm' && format('npm@{0}', matrix.npm) || 'yarn' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ["20.18.3", "22", "24"]
+        pm: [yarn, npm]
+        npm: ["10", "12"]
+        exclude:
+          - pm: yarn # npm version matters only on the npm legs
+            npm: "12"
+          - node: "20.18.3" # npm@12 needs Node ^22.22.2 || ^24.15.0 || >=26
+            npm: "12"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: npm@${{ matrix.npm }}
+        run: npm install -g npm@${{ matrix.npm }} && npm --version
+      - run: corepack enable
+      - name: Git identity (create-scaffold-hbar makes the first commit)
+        run: |
+          git config --global user.name "template gate"
+          git config --global user.email "gate@users.noreply.github.com"
+      - name: Install gate tools (the manifest validator imports zod)
+        run: yarn install --immutable
+      - name: Gate on a fresh scaffold from GitHub
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash tools/gate/local-gate.sh "${{ github.repository }}#${{ github.event.pull_request.head.sha || github.sha }}" ${{ matrix.pm }}

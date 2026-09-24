@@ -10,6 +10,10 @@
   },
   "scripts": {
     "format": "yarn next:format && yarn hardhat:format",
+    "gate:local": "bash tools/gate/local-gate.sh",
+    "gate:manifest": "node tools/gate/validate-template-json.mjs",
+    "gate:secrets": "node tools/gate/scan-secrets.mjs --tree . --history .",
+    "gate:test": "node --test tools/gate/gate.test.mjs",
     "hardhat:account": "yarn workspace @sh/hardhat account",
     "hardhat:account:generate": "yarn workspace @sh/hardhat account:generate",
     "hardhat:account:import": "yarn workspace @sh/hardhat account:import",
@@ -28,6 +32,7 @@
     "hardhat:verify": "yarn workspace @sh/hardhat verify",
     "hardhat:verify:testnet": "yarn workspace @sh/hardhat verify:testnet",
     "hardhat:verify:mainnet": "yarn workspace @sh/hardhat verify:mainnet",
+    "harness:run": "hedera-harness run .harness/spec.yaml",
     "lint": "yarn next:lint && yarn hardhat:lint",
     "next:build": "yarn workspace @sh/nextjs build",
     "next:check-types": "yarn workspace @sh/nextjs check-types",
@@ -42,8 +47,10 @@
   },
   "packageManager": "yarn@3.2.3",
   "devDependencies": {
+    "hedera-harness": "2.0.0-rc.4",
     "husky": "^9.1.6",
-    "lint-staged": "^15.2.10"
+    "lint-staged": "^15.2.10",
+    "zod": "3.25.76"
   },
   "engines": {
     "node": ">=20.18.3"

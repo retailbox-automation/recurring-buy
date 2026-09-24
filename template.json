@@ -1,0 +1,45 @@
+{
+  "name": "countersign",
+  "description": "Hedera scaffold-hbar template — work in progress.",
+  "create-scaffold-hbar": {
+    "capabilities": {
+      "frontend": ["nextjs-app"],
+      "solidityFramework": ["hardhat"],
+      "packageManager": ["yarn", "npm"]
+    },
+    "defaults": {
+      "frontend": "nextjs-app",
+      "solidityFramework": "hardhat",
+      "packageManager": "yarn"
+    },
+    "outro": {
+      "sections": [
+        {
+          "title": "Next steps",
+          "steps": [
+            {
+              "label": "Start the frontend",
+              "command": "{run:next:dev}"
+            },
+            {
+              "label": "Generate or import a deployer account",
+              "command": "{run:framework:account:generate}"
+            },
+            {
+              "label": "Fund it with testnet HBAR",
+              "url": "https://portal.hedera.com/faucet"
+            },
+            {
+              "label": "Deploy the contracts to Hedera testnet",
+              "command": "{run:framework:deploy} --network hederaTestnet"
+            },
+            {
+              "label": "Develop with Hedera Harness",
+              "command": "{run:harness:run}"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
