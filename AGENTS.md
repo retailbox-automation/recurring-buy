@@ -1,138 +1,60 @@
 # Agent instructions
 
-Briefing for coding agents in this app (Cursor, Claude Code, Codex). Claude Code loads it through `CLAUDE.md`.
+Briefing for coding agents (Claude Code, Cursor, Codex) working in this repository or in a project created from it. Claude Code loads it through `CLAUDE.md`.
 
-This is a Scaffold-HBAR dApp: Next.js App Router, wallet connect, Debug Contracts, and Hedera networks (testnet, mainnet, local fork). The CLI may have left only Hardhat or only Foundry.
+## What this is
 
-Use the package manager this project was created with (`packageManager` in the root `package.json`, or the lockfile). Examples use `yarn`; if the app was created with npm, swap `yarn <script>` for `npm run <script>`.
+A scaffold-hbar template for Hedera: `packages/nextjs` (Next.js App Router, RainbowKit, wagmi, viem, DaisyUI) and `packages/hardhat` (Hardhat, hardhat-deploy). It is Hardhat-only; there is no Foundry package. The use case is not implemented yet: the contracts are the starter samples `HederaToken` (ERC-20) and `HtsTokenCreator` (HTS precompile at `0x167`).
 
-## Which Solidity package
+## Package manager
 
-- `packages/hardhat` exists → Hardhat (`hardhat-deploy`)
-- `packages/foundry` exists → Foundry (Forge scripts)
-- `packages/nextjs` is always the frontend (App Router, RainbowKit, Wagmi, Viem, DaisyUI)
-
-Follow only the flavor that is present.
+Use the one the project was created with (`packageManager` in the root `package.json`, or the lockfile). Examples use Yarn; in an npm project run `npm run <script>` and put `--` before extra arguments (`npm run next:lint -- --max-warnings=0`).
 
 ## Commands
 
-Package-prefixed scripts for package-specific work. Keep only truly cross-workspace commands unprefixed.
+```bash
+yarn next:dev                                  # frontend, http://localhost:3000
+yarn hardhat:chain                             # local Hedera-forked node on 8545
+yarn hardhat:deploy --network localhost        # deploy to that node
+yarn hardhat:deploy --network hederaTestnet    # deploy to testnet (hederaMainnet for mainnet)
+yarn hardhat:account:generate                  # encrypted deployer key in packages/hardhat/.env
+
+yarn next:lint --max-warnings=0 && yarn hardhat:lint --max-warnings=0
+yarn next:check-types
+yarn hardhat:compile && yarn next:build
+yarn hardhat:test
+```
+
+`yarn hardhat:deploy` without `--network` targets the in-process `hardhat` network, not the node started by `hardhat:chain`.
+
+## Where things live
+
+- Contracts `packages/hardhat/contracts/`, deploy scripts `packages/hardhat/deploy/`, tests `packages/hardhat/test/`, networks `packages/hardhat/hardhat.config.ts` (`hederaTestnet` 296, `hederaMainnet` 295).
+- After a deploy, ABIs and addresses are written to `packages/nextjs/contracts/deployedContracts.ts`. Third-party contracts go in `packages/nextjs/contracts/externalContracts.ts`.
+- Frontend network settings: `packages/nextjs/scaffold.config.ts`.
+- Contract hooks: `packages/nextjs/hooks/scaffold-hbar` — `useScaffoldReadContract`, `useScaffoldWriteContract`, `useScaffoldEventHistory`, `useScaffoldWatchContractEvent`, `useDeployedContractInfo`, `useTransactor`. Web3 UI components come from `@scaffold-hbar-ui/components`.
+- Next.js imports use the `~~` alias; pages that use hooks need `"use client"`.
+
+## Rules for changes
+
+- Never commit a private key, token or `.env` file. Only `.env.example` files are tracked, and values of key-like variables in them stay empty.
+- The app must build and boot with no `.env`: `tools/gate/local-gate.sh` runs `next build` and `next start` in an empty environment and requests every core route, as the bounty's mechanical gate is expected to. Fetch live network data on the client and show an error state when a node or API is unreachable; do not fetch at build time.
+- Core routes are listed in `.harness/validators/playwright-smoke.yaml`. Add a route there when you add a page that matters.
+- Keep `template.json` in step with `packages/`: its capabilities must name only packages that exist. Run `yarn gate:manifest` after editing it.
+- Lint allows zero warnings. Prefer `type` over `interface`; comments should add information.
+
+## Checking your work
 
 ```bash
-# Local chain + deploy + frontend (separate terminals)
-yarn hardhat:chain    # Hedera-forked Hardhat node on 8545
-yarn hardhat:deploy --network localhost
-yarn foundry:chain    # Anvil from the Foundry package
-yarn foundry:deploy
-yarn next:start       # http://localhost:3000
-
-# Frontend only
-yarn next:dev
-
-# Quality / build
-yarn lint
-yarn format
-yarn next:build
-yarn hardhat:compile
-yarn foundry:compile
-
-# Live networks
-yarn hardhat:deploy --network hederaTestnet   # or hederaMainnet
-yarn foundry:deploy --network hedera_testnet  # or hedera_mainnet
-yarn hardhat:verify:testnet
-yarn foundry:verify:testnet
-
-# Deployer account
-yarn hardhat:account:generate
-yarn hardhat:account:import
-yarn hardhat:account
+yarn gate:test                                   # gate tools: every check has a must-fail twin
+yarn gate:manifest                               # template.json vs the create-scaffold-hbar 0.4.0 schema
+yarn gate:secrets                                # secrets and .env in the tree and git history
+yarn gate:local <owner/repo[#branch]> yarn       # full gate on a fresh scaffold from GitHub (10+ min)
+npx hedera-harness validate                      # install, lint, build, test, then renders core routes
 ```
 
-`yarn hardhat:deploy` without `--network localhost` targets the in-process `hardhat` network, not the long-running fork.
+`gate:local` reads the template from GitHub, so push the branch first and pass it as `owner/repo#branch`.
 
-## Layout
+## Hedera Harness
 
-### Hardhat
-
-- Contracts: `packages/hardhat/contracts/`
-- Deploy scripts: `packages/hardhat/deploy/`
-- Tests: `packages/hardhat/test/`
-- Config: `packages/hardhat/hardhat.config.ts`
-- Tagged deploy: if `deployHederaToken.tags = ["HederaToken"]`, run `yarn hardhat:deploy --tags HederaToken`
-
-### Foundry
-
-- Contracts: `packages/foundry/contracts/`
-- Deploy scripts: `packages/foundry/script/` (`Deploy.s.sol`, `DeployHederaToken.s.sol`, `DeployHtsTokenCreator.s.sol`)
-- Tests: `packages/foundry/test/`
-- Config: `packages/foundry/foundry.toml`
-- One contract: `yarn foundry:deploy --file DeployHederaToken.s.sol`
-
-### After deploy
-
-ABIs and addresses are written to `packages/nextjs/contracts/deployedContracts.ts`. Put third-party contracts in `packages/nextjs/contracts/externalContracts.ts`.
-
-Sample contracts on this starter: `HederaToken` (ERC-20) and `HtsTokenCreator` (HTS precompile at `0x167`).
-
-## Frontend contract interaction
-
-Hooks live in `packages/nextjs/hooks/scaffold-hbar`. Use the names that exist in the codebase:
-
-- `useScaffoldReadContract` — not `useScaffoldContractRead`
-- `useScaffoldWriteContract` — not `useScaffoldContractWrite`
-
-Also: `useScaffoldWatchContractEvent`, `useScaffoldEventHistory`, `useDeployedContractInfo`, `useScaffoldContract`, `useTransactor`.
-
-```typescript
-const { data: balance } = useScaffoldReadContract({
-  contractName: "HederaToken",
-  functionName: "balanceOf",
-  args: [connectedAddress],
-});
-
-const { writeContractAsync, isPending } = useScaffoldWriteContract({
-  contractName: "HederaToken",
-});
-
-await writeContractAsync({
-  functionName: "mint",
-  args: [connectedAddress, parseEther("1")],
-});
-```
-
-`HederaToken.mint` is `onlyOwner`. For HTS creation, `HtsTokenCreator.createToken` is payable (HTS fee via `msg.value`) and emits `TokenCreated`.
-
-### UI
-
-Use `@scaffold-hbar-ui/components` for web3 UI: `Address`, `AddressInput`, `Balance`, `EtherInput`, `IntegerInput`.
-
-Use DaisyUI classes, not raw Tailwind when a DaisyUI component exists:
-
-```tsx
-<button className="btn btn-primary">Connect</button>
-```
-
-### Networks
-
-- Hardhat: `packages/hardhat/hardhat.config.ts` (`hederaTestnet` 296, `hederaMainnet` 295)
-- Foundry: `packages/foundry/foundry.toml` (`hedera_testnet`, `hedera_mainnet`)
-- Next.js: `packages/nextjs/scaffold.config.ts` (target networks, polling, RPC overrides, WalletConnect)
-
-## Style
-
-| Style | Use |
-| --- | --- |
-| `UpperCamelCase` | types, components |
-| `lowerCamelCase` | variables, functions |
-| `CONSTANT_CASE` | constants |
-| `snake_case` | Hardhat deploy files and Foundry scripts |
-
-Next.js imports use the `~~` alias:
-
-```tsx
-import { useTargetNetwork } from "~~/hooks/scaffold-hbar";
-```
-
-App Router pages live under `packages/nextjs/app/`. Add `"use client"` when the page uses hooks.
-
-Prefer `type` over `interface`. No `T` prefix on types. Let TypeScript infer when it can. Comments should add information.
+The recipe is in `.harness/` (schema v3, `hedera-harness` pinned to `2.0.0-rc.4`). `validate` and `doctor` run without an agent or keys. `yarn harness:run` starts an agent run on a new `harness/run-*` branch and needs a clean tree. Chain validation, when enabled, reads `HEDERA_OPERATOR_ID` and `HEDERA_OPERATOR_KEY` from the shell; never write them to a file in the repository.
