@@ -7,7 +7,7 @@ import { referencePlan, useContractId, usePlan, useReferenceNetwork } from "~~/h
 /** The plan from scaffold.config.ts `referencePlan`, read from the mirror node: works without a wallet and without env. */
 export const ReferencePlan = () => {
   const network = useReferenceNetwork();
-  const { data: plan, isPending, isError, error, refetch } = usePlan(network, referencePlan.planId);
+  const { data, isPending, isError, error, refetch } = usePlan(network, referencePlan.planId);
   const { data: contractId } = useContractId(network);
   const { contract, explorer, networkName } = network;
 
@@ -57,18 +57,20 @@ export const ReferencePlan = () => {
       </Panel>
     );
   }
-  if (!plan) {
+  if (!data.plan) {
     return (
       <Panel title={title} action={contractLink}>
         <p className="m-0 text-base-content/70">
-          The mirror node has no plan #{referencePlan.planId.toString()} for this contract yet.
+          {data.truncated
+            ? `Plan #${referencePlan.planId} was created before the newest events this page reads from the mirror node.`
+            : `The mirror node has no plan #${referencePlan.planId} for this contract yet.`}
         </p>
       </Panel>
     );
   }
   return (
     <Panel title={title} action={contractLink}>
-      <PlanDetails plan={plan} network={network} />
+      <PlanDetails plan={data.plan} network={network} />
     </Panel>
   );
 };

@@ -64,8 +64,6 @@ function logOf(eventName: string, args: Record<string, unknown>, timestamp: stri
       nonIndexed.map(i => args[i.name!]),
     ),
     timestamp,
-    transaction_hash: `0x${timestamp.replace(".", "").padStart(64, "0")}`,
-    index: 0,
   };
 }
 
@@ -155,6 +153,40 @@ describe("buildTicks and chainStatus", () => {
   });
 });
 
+describe("chainStatus after the owner stops", () => {
+  const executed = (timestamp: string): MirrorSchedule => ({
+    schedule_id: "0.0.501",
+    executed_timestamp: timestamp,
+    expiration_time: "190.0",
+    deleted: false,
+  });
+  const stoppedPlan = (stopAt: string) =>
+    decodeAll([
+      created(1n, ALICE, "100.0"),
+      scheduled(1n, 1, "0.0.501", 190, "100.0"),
+      // deleteSchedule returned 201 (INVALID_SCHEDULE_ID): the schedule had already run.
+      logOf("PlanStopped", { planId: 1n, ticksDone: 0, reason: 1, hssResponseCode: 201 }, stopAt),
+    ]);
+
+  it("says the chain had already broken when the last tick reverted before the stop", () => {
+    const events = stoppedPlan("250.0");
+    const ticks = buildTicks(events, {
+      "0.0.501": { record: executed("190.1"), state: "executed", revert: "no reason given; for example, out of gas" },
+    });
+    const status = chainStatus(events, ticks);
+    assert.equal(status.kind === "stopped" && status.brokenAt, 1);
+  });
+
+  it("does not blame the chain for a pending tick that ran after the stop", () => {
+    const events = stoppedPlan("150.0");
+    const ticks = buildTicks(events, {
+      "0.0.501": { record: executed("190.1"), state: "executed", revert: "PlanNotActive(1)" },
+    });
+    const status = chainStatus(events, ticks);
+    assert.equal(status.kind === "stopped" && status.brokenAt, null);
+  });
+});
+
 describe("resolvePlan on real schedule records", () => {
   it("calls a plan broken when its last tick reverted as a whole, whatever the contract's flag says", async () => {
     // Spike N1 negative control: the allowance was 0, the tick reverted without a reason and took its bookkeeping
@@ -202,12 +234,7 @@ describe("resolvePlan on real schedule records", () => {
 
 describe("loadContractEvents and plansOwnedBy", () => {
   it("reads the contract's logs newest page first and returns them oldest first", async () => {
-    const logs = [
-      created(1n, ALICE, "100.0"),
-      created(2n, BOB, "110.0"),
-      created(3n, ALICE, "120.0"),
-      { ...created(4n, ALICE, "130.0"), address: SAUCE },
-    ].reverse();
+    const logs = [created(1n, ALICE, "100.0"), created(2n, BOB, "110.0"), created(3n, ALICE, "120.0")].reverse();
     const { mirror, requested } = fixtureMirror({
       [`/contracts/${CONTRACT}`]: contractRecord,
       [`/contracts/${CONTRACT}/results/logs?order=desc&limit=100`]: { logs, links: { next: null } },
@@ -220,6 +247,30 @@ describe("loadContractEvents and plansOwnedBy", () => {
     );
     assert.deepEqual(plansOwnedBy(loaded!.events, ALICE), [3n, 1n]);
     assert.deepEqual(requested, [`/contracts/${CONTRACT}`, `/contracts/${CONTRACT}/results/logs?order=desc&limit=100`]);
+  });
+
+  it("stops paging at the page with the plan's PlanCreated", async () => {
+    const logsPath = `/contracts/${CONTRACT}/results/logs?order=desc&limit=100`;
+    const page2 = `${logsPath}&timestamp=lt:200.0`;
+    const page3 = `${logsPath}&timestamp=lt:100.0`;
+    const { mirror, requested } = fixtureMirror({
+      [`/contracts/${CONTRACT}`]: contractRecord,
+      [logsPath]: { logs: [scheduled(1n, 2, "0.0.502", 390, "300.0")], links: { next: `/api/v1${page2}` } },
+      [page2]: {
+        logs: [scheduled(1n, 1, "0.0.501", 290, "200.0"), created(1n, ALICE, "200.0")],
+        links: { next: `/api/v1${page3}` },
+      },
+      [page3]: { logs: [created(0n, BOB, "100.0")], links: { next: null } },
+    });
+    const loaded = await loadContractEvents(mirror, CONTRACT, { planId: 1n });
+    assert.equal(loaded?.truncated, false);
+    assert.deepEqual(
+      loaded?.events.map(e => e.type),
+      ["PlanCreated", "TickScheduled", "TickScheduled"],
+    );
+    assert.ok(!requested.includes(page3));
+    // Without a plan id every page is read.
+    assert.equal((await loadContractEvents(mirror, CONTRACT))?.events.length, 4);
   });
 
   it("returns null when the mirror node does not know the contract", async () => {

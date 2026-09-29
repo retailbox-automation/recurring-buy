@@ -28,7 +28,7 @@ import {
 } from "~~/hooks/recurring-buy/useRecurringBuy";
 import { useTransactor } from "~~/hooks/scaffold-hbar";
 import { recurringBuyAbi } from "~~/utils/recurring-buy/abi";
-import type { PlanParams } from "~~/utils/recurring-buy/plan";
+import { type PlanParams, ticksRun } from "~~/utils/recurring-buy/plan";
 
 /**
  * Gas limit of every tick. A tick that pulled, swapped and scheduled the next one used 1,622,904 gas on testnet
@@ -230,10 +230,12 @@ const PlanBuilder = ({ network, contract }: { network: RecurringBuyNetwork; cont
   );
   const unboundedShare = sharing.some(plan => plan.params.maxTicks === 0n);
   const othersNeed = sharing.reduce((sum, plan) => {
-    const run = BigInt(plan.ticks.filter(row => "timestamp" in row.outcome && row.outcome.timestamp).length);
+    const run = BigInt(ticksRun(plan.ticks));
     return plan.params.maxTicks > run ? sum + (plan.params.maxTicks - run) * plan.params.amountPerTick : sum;
   }, 0n);
   const neededAllowance = total + othersNeed;
+  // Until the owner's other plans are read, what they still need from the allowance is unknown.
+  const sharingKnown = ownerPlans.isSuccess || !address;
 
   // Undefined while the account loads; 0 when the account does not hold the token at all.
   const inBalance = tokenIn && account.data ? (account.data.tokens[tokenIn.toLowerCase()] ?? 0n) : undefined;
@@ -253,7 +255,7 @@ const PlanBuilder = ({ network, contract }: { network: RecurringBuyNetwork; cont
 
   const ready = problems.length === 0 && minAmountOut > 0n && deposit !== undefined;
   const associationDone = outAssociated || autoAssociates;
-  const allowanceDone = allowance !== undefined && ready && allowance >= neededAllowance;
+  const allowanceDone = allowance !== undefined && ready && sharingKnown && allowance >= neededAllowance;
   const hasSlice = inBalance !== undefined && inBalance >= amountPerTick;
 
   const params: PlanParams = {
@@ -321,8 +323,10 @@ const PlanBuilder = ({ network, contract }: { network: RecurringBuyNetwork; cont
       const gas = ((await publicClient!.estimateContractGas(request)) * 12n) / 10n;
       const hash = await writeContractAsync({ ...request, gas, chainId, ...(await fees()) });
       const receipt = await publicClient!.waitForTransactionReceipt({ hash });
-      const [created] = parseEventLogs({ abi: recurringBuyAbi, logs: receipt.logs, eventName: "PlanCreated" });
-      if (created) setCreatedPlanId(created.args.planId);
+      if (receipt.status === "success") {
+        const [created] = parseEventLogs({ abi: recurringBuyAbi, logs: receipt.logs, eventName: "PlanCreated" });
+        if (created) setCreatedPlanId(created.args.planId);
+      }
       return hash;
     });
 
@@ -495,11 +499,20 @@ const PlanBuilder = ({ network, contract }: { network: RecurringBuyNetwork; cont
                 {othersNeed > 0n &&
                   `, of which your other running plans on ${inSymbol} can still take ${formatToken(othersNeed, tokenIn!, inInfo)}`}
                 .{unboundedShare && ` A running plan without an end also draws on it: stop it or raise this allowance.`}
+                {ownerPlans.data?.truncated &&
+                  " Only your newest plans were read: an older running plan on this token would also draw on it."}
               </p>
+              {!sharingKnown && (
+                <p className="m-0 text-sm text-warning">
+                  {ownerPlans.isError
+                    ? "Could not read your other plans, which share this allowance. Reload to try again."
+                    : "Reading your other plans, which share this allowance…"}
+                </p>
+              )}
               {!allowanceDone && (
                 <button
                   className="btn btn-sm btn-primary self-start"
-                  disabled={busy !== null || !ready}
+                  disabled={busy !== null || !ready || !sharingKnown}
                   onClick={approve}
                 >
                   {busy === "approve"
@@ -559,7 +572,7 @@ const PlanBuilder = ({ network, contract }: { network: RecurringBuyNetwork; cont
 };
 
 const Created = ({ network, planId }: { network: RecurringBuyNetwork; planId: bigint }) => {
-  const { data: plan, isPending } = usePlan(network, planId);
+  const { data, isPending } = usePlan(network, planId);
   return (
     <Panel
       title={`Plan #${planId.toString()} started`}
@@ -572,8 +585,8 @@ const Created = ({ network, planId }: { network: RecurringBuyNetwork; planId: bi
       <p className="m-0 mb-4 text-sm text-base-content/70">
         Below is what the mirror node shows for it, refreshed as ticks come due.
       </p>
-      {plan ? (
-        <PlanDetails plan={plan} network={network} />
+      {data?.plan ? (
+        <PlanDetails plan={data.plan} network={network} />
       ) : (
         <p className="m-0 text-base-content/60">
           {isPending ? "Reading the plan from the mirror node…" : "The mirror node has not indexed the plan yet."}

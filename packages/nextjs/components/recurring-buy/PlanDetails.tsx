@@ -11,7 +11,13 @@ import {
   useTokenInfo,
 } from "~~/hooks/recurring-buy/useRecurringBuy";
 import { recurringBuyAbi } from "~~/utils/recurring-buy/abi";
-import { BELOW_FLOOR_REASON, type ChainStatus, type PlanView, type TickRow } from "~~/utils/recurring-buy/plan";
+import {
+  BELOW_FLOOR_REASON,
+  type ChainStatus,
+  type PlanView,
+  type TickRow,
+  ticksRun,
+} from "~~/utils/recurring-buy/plan";
 
 type Tokens = { in: TokenInfo | null | undefined; out: TokenInfo | null | undefined };
 
@@ -36,8 +42,11 @@ function stopMessage(status: Extract<ChainStatus, { kind: "stopped" }>): string 
     case "Completed":
       return `Completed: all ${status.ticksDone} ticks ran.`;
     case "StoppedByOwner":
-      return status.hssResponseCode === 22
-        ? "Stopped by the owner. Hedera deleted the pending tick's schedule, so its reservation went back to the deposit."
+      if (status.hssResponseCode === 22) {
+        return "Stopped by the owner. Hedera deleted the pending tick's schedule, so its reservation went back to the deposit.";
+      }
+      return status.brokenAt !== null
+        ? `Stopped by the owner after the chain broke at tick ${status.brokenAt}: nothing was pending, so that tick's reservation was not refunded.`
         : `Stopped by the owner. Hedera did not delete the pending schedule (response ${status.hssResponseCode}); it will run and revert without buying.`;
     case "PullFailed":
       return `Stopped at tick ${status.ticksDone}: the allowance or the token balance could not cover a buy.`;
@@ -248,8 +257,8 @@ export const PlanDetails = ({
         <dd className="m-0">at least {formatToken(params.minAmountOut, params.tokenOut, tokens.out)} per buy</dd>
         <dt className="text-base-content/60">Progress</dt>
         <dd className="m-0">
-          {plan.ticks.filter(row => executedAt(row)).length} of{" "}
-          {params.maxTicks === 0n ? "unlimited" : params.maxTicks.toString()} ticks run · {bought.length} bought
+          {ticksRun(plan.ticks)} of {params.maxTicks === 0n ? "unlimited" : params.maxTicks.toString()} ticks run ·{" "}
+          {bought.length} bought
           {average !== null && tokens.in && tokens.out && (
             <span className="text-base-content/60">
               {" "}

@@ -86,26 +86,41 @@ export function useReferenceNetwork(): RecurringBuyNetwork {
 
 const nowSeconds = () => Math.floor(Date.now() / 1000);
 
-/** How soon to read a plan again: often while a tick is about to run, rarely once nothing more will happen. */
-function refetchAfter(plan: PlanView | null | undefined): number | false {
-  if (!plan) return 10_000;
-  const { status } = plan;
-  if (status.kind === "stopped" || status.kind === "broken") return false;
+/**
+ * How soon to read a plan again: often while a tick is about to run, every minute once the chain looks broken or a
+ * stopped plan still shows an open tick (a late mirror node or a schedule `stop` could not delete), never once nothing
+ * more can happen.
+ */
+function refetchAfter(plan: PlanView): number | false {
+  const { status, ticks } = plan;
   if (status.kind === "running") return status.due - nowSeconds() > 120 ? 30_000 : 5_000;
-  return 5_000;
+  if (status.kind === "due" || status.kind === "indexing") return 5_000;
+  if (status.kind === "broken") return 60_000;
+  const open = ticks.some(row => ["waiting", "due", "indexing"].includes(row.outcome.kind));
+  return open ? 60_000 : false;
 }
 
-/** One plan's history and chain status. `data` is null when the contract has no such plan. */
+export type PlanLookup = {
+  /** Null when the contract has no such plan among the events read. */
+  plan: PlanView | null;
+  /** The contract has more events than were read, and the plan's creation was not among them. */
+  truncated: boolean;
+};
+
+/** One plan's history and chain status. */
 export function usePlan(network: RecurringBuyNetwork, planId: bigint | undefined) {
   const { mirror, contract, chainId } = network;
   return useQuery({
     queryKey: ["recurring-buy", "plan", chainId, contract, planId?.toString()],
-    queryFn: async (): Promise<PlanView | null> => {
-      const loaded = await loadContractEvents(mirror!, contract!);
-      return loaded ? resolvePlan(mirror!, loaded, planId!, nowSeconds()) : null;
+    queryFn: async (): Promise<PlanLookup> => {
+      const loaded = await loadContractEvents(mirror!, contract!, { planId });
+      if (!loaded) return { plan: null, truncated: false };
+      return { plan: await resolvePlan(mirror!, loaded, planId!, nowSeconds()), truncated: loaded.truncated };
     },
     enabled: Boolean(mirror && contract && planId !== undefined),
-    refetchInterval: query => refetchAfter(query.state.data),
+    // A plan not found yet may still be indexing (right after `start`); one beyond the pages read will not appear.
+    refetchInterval: ({ state: { data } }) =>
+      !data ? false : data.plan ? refetchAfter(data.plan) : !data.truncated && 10_000,
     retry: 1,
   });
 }
@@ -126,7 +141,7 @@ export function useOwnerPlans(network: RecurringBuyNetwork, owner: string | unde
     },
     enabled: Boolean(mirror && contract && owner),
     refetchInterval: query => {
-      const intervals = (query.state.data?.plans ?? []).map(refetchAfter).filter((ms): ms is number => ms !== false);
+      const intervals = (query.state.data?.plans ?? []).map(refetchAfter).filter(ms => ms !== false);
       return intervals.length ? Math.min(...intervals) : false;
     },
     retry: 1,

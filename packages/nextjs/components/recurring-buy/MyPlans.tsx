@@ -59,8 +59,11 @@ const StopButton = ({ plan, network }: { plan: PlanView; network: RecurringBuyNe
         const gas = ((await publicClient!.estimateContractGas(request)) * 12n) / 10n;
         const hash = await writeContractAsync({ ...request, gas, chainId, ...(await fees()) });
         const receipt = await publicClient!.waitForTransactionReceipt({ hash });
-        const [refunded] = parseEventLogs({ abi: recurringBuyAbi, logs: receipt.logs, eventName: "GasRefunded" });
-        setRefund(refunded?.args.amount ?? 0n);
+        // A reverted stop still returns a receipt; useTransactor reports it after this function returns.
+        if (receipt.status === "success") {
+          const [refunded] = parseEventLogs({ abi: recurringBuyAbi, logs: receipt.logs, eventName: "GasRefunded" });
+          setRefund(refunded?.args.amount ?? 0n);
+        }
         return hash;
       });
       await refetch();

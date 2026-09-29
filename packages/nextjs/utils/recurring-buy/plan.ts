@@ -29,7 +29,7 @@ export type PlanParams = {
 type Logged = { planId: bigint; timestamp: string };
 
 export type PlanEvent =
-  | (Logged & { type: "PlanCreated"; owner: Address; params: PlanParams; deposit: bigint; txHash: Hex })
+  | (Logged & { type: "PlanCreated"; owner: Address; params: PlanParams; deposit: bigint })
   | (Logged & { type: "TickScheduled"; tick: number; scheduleId: string; expiry: number })
   | (Logged & { type: "TickExecuted"; tick: number; amountIn: bigint; amountOut: bigint })
   | (Logged & { type: "TickSkipped"; tick: number; reason: Hex })
@@ -49,7 +49,7 @@ export function decodePlanLog(log: MirrorLog): PlanEvent | null {
   switch (decoded.eventName) {
     case "PlanCreated": {
       const { owner, params, deposit } = decoded.args;
-      return { ...at, type: "PlanCreated", owner, params: { ...params }, deposit, txHash: log.transaction_hash };
+      return { ...at, type: "PlanCreated", owner, params: { ...params }, deposit };
     }
     case "TickScheduled":
       return {
@@ -126,7 +126,15 @@ export type TickRow = {
 export type ChainStatus =
   | { kind: "running"; tick: number; due: number }
   | { kind: "due"; tick: number; due: number }
-  | { kind: "stopped"; reason: StopReason; ticksDone: number; hssResponseCode: number; timestamp: string }
+  | {
+      kind: "stopped";
+      reason: StopReason;
+      ticksDone: number;
+      hssResponseCode: number;
+      timestamp: string;
+      /** The tick that had already broken the chain when the owner stopped the plan: nothing was left to delete. */
+      brokenAt: number | null;
+    }
   /** No stop event, and no tick will run again: the contract may still call the plan active. */
   | { kind: "broken"; tick: number; detail: string }
   | { kind: "indexing" };
@@ -197,11 +205,19 @@ function fromSchedule(lookup: ScheduleLookup | undefined): TickOutcome {
  */
 export function chainStatus(events: PlanEvent[], ticks: TickRow[]): ChainStatus {
   const stop = events.findLast(event => event.type === "PlanStopped");
+  const last = ticks[ticks.length - 1];
   if (stop?.type === "PlanStopped") {
     const { reason, ticksDone, hssResponseCode, timestamp } = stop;
-    return { kind: "stopped", reason, ticksDone, hssResponseCode, timestamp };
+    // A pending tick that `stop` could not delete runs later and reverts with PlanNotActive; only a tick that failed
+    // before the stop had broken the chain.
+    const stoppedAt = Number(timestamp);
+    const broke =
+      last &&
+      last.tick > ticksDone &&
+      ((last.outcome.kind === "reverted" && Number(last.outcome.timestamp) < stoppedAt) ||
+        (last.outcome.kind === "missed" && (last.due ?? 0) < stoppedAt));
+    return { kind: "stopped", reason, ticksDone, hssResponseCode, timestamp, brokenAt: broke ? last.tick : null };
   }
-  const last = ticks[ticks.length - 1];
   if (!last) return { kind: "indexing" };
   const { outcome } = last;
   if (outcome.kind === "waiting") return { kind: "running", tick: last.tick, due: last.due ?? 0 };
@@ -214,13 +230,16 @@ export function chainStatus(events: PlanEvent[], ticks: TickRow[]): ChainStatus 
   return { kind: "indexing" };
 }
 
+/** Ticks the contract counts in `ticksDone`: bought, skipped, or ended by a failed pull. */
+export const ticksRun = (ticks: TickRow[]) =>
+  ticks.filter(row => ["bought", "skipped", "pull-failed"].includes(row.outcome.kind)).length;
+
 export type PlanView = {
   planId: bigint;
   owner: Address;
   params: PlanParams;
   deposit: bigint;
   createdAt: string;
-  createdTx: Hex;
   ticks: TickRow[];
   status: ChainStatus;
   /** Sum of GasDepositAdded. */
@@ -239,25 +258,30 @@ export type ContractEvents = {
 };
 
 /**
- * Every RecurringBuy event of `contract` (its EVM address), newest pages first. The mirror node filters logs by topic
- * only within a timestamp range, so the plan filter runs here. Null when the mirror node has no such contract.
+ * RecurringBuy events of `contract` (its EVM address or id), read newest page first. The mirror node filters logs by
+ * topic only within a timestamp range, so the plan filter runs here. With `planId`, paging stops at the page that holds
+ * that plan's PlanCreated: every later event of the plan is newer, so it is already read. Null when the mirror node has
+ * no such contract.
  */
 export async function loadContractEvents(
   mirror: Mirror,
-  contract: Address,
-  maxPages = 20,
+  contract: string,
+  { planId, maxPages = planId === undefined ? 20 : 50 }: { planId?: bigint; maxPages?: number } = {},
 ): Promise<ContractEvents | null> {
   const record = await mirror.get<{ contract_id: string }>(`/contracts/${contract}`);
   if (!record) return null;
+  const createdHere = (logs: MirrorLog[]) =>
+    logs.some(log => {
+      const event = decodePlanLog(log);
+      return event?.type === "PlanCreated" && event.planId === planId;
+    });
   const { items, truncated } = await mirror.pages<MirrorLog>(
     `/contracts/${contract}/results/logs?order=desc&limit=100`,
     "logs",
     maxPages,
+    planId === undefined ? undefined : createdHere,
   );
-  const events = items
-    .filter(log => log.address.toLowerCase() === contract.toLowerCase())
-    .reverse()
-    .flatMap(log => decodePlanLog(log) ?? []);
+  const events = items.reverse().flatMap(log => decodePlanLog(log) ?? []);
   return { contractId: record.contract_id, events, truncated };
 }
 
@@ -311,7 +335,6 @@ export async function resolvePlan(
     params: created.params,
     deposit: created.deposit,
     createdAt: created.timestamp,
-    createdTx: created.txHash,
     ticks,
     status: chainStatus(own, ticks),
     toppedUp: sum("GasDepositAdded"),

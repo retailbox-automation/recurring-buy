@@ -9,8 +9,6 @@ export type MirrorLog = {
   topics: Hex[];
   /** Consensus timestamp of the transaction that emitted it, "seconds.nanos". */
   timestamp: string;
-  transaction_hash: Hex;
-  index: number;
 };
 
 export type MirrorSchedule = {
@@ -27,13 +25,6 @@ export type MirrorContractResult = {
   result: string;
   contract_id: string | null;
   error_message: Hex | null;
-  function_parameters: Hex;
-  gas_used: number;
-  /**
-   * For a call run by HIP-1215 this is the hashio relay that sent the transaction which created the schedule, not the
-   * caller: a tick's `msg.sender` is the contract itself.
-   */
-  from: Hex;
 };
 
 /** /transactions?timestamp=…: the record of one transaction, with the HBAR it moved. */
@@ -51,8 +42,16 @@ export type MirrorTransaction = {
 export type Mirror = {
   /** The JSON at `path` (under /api/v1), or null on 404. */
   get<T>(path: string): Promise<T | null>;
-  /** Every item under `key` of a paged list, following links.next up to `maxPages` pages. */
-  pages<T>(path: string, key: string, maxPages: number): Promise<{ items: T[]; truncated: boolean }>;
+  /**
+   * Every item under `key` of a paged list, following links.next up to `maxPages` pages, or until `done` returns true
+   * for a page's items.
+   */
+  pages<T>(
+    path: string,
+    key: string,
+    maxPages: number,
+    done?: (page: T[]) => boolean,
+  ): Promise<{ items: T[]; truncated: boolean }>;
 };
 
 /** `baseUrl` ends in /api/v1, as ENDPOINTS.<network>.mirrorUrl in @sh/saucerswap. */
@@ -66,14 +65,15 @@ export function createMirror(baseUrl: string, fetchImpl: typeof fetch = (...args
   };
   return {
     get: path => getUrl(baseUrl + path),
-    async pages<T>(path: string, key: string, maxPages: number) {
+    async pages<T>(path: string, key: string, maxPages: number, done?: (page: T[]) => boolean) {
       const items: T[] = [];
       let url: string | null = baseUrl + path;
       for (let page = 0; url && page < maxPages; page++) {
         const body: Record<string, unknown> | null = await getUrl(url);
-        items.push(...((body?.[key] as T[] | undefined) ?? []));
+        const pageItems: T[] = (body?.[key] as T[] | undefined) ?? [];
+        items.push(...pageItems);
         const next: string | null | undefined = (body?.links as { next?: string | null } | undefined)?.next;
-        url = next ? origin + next : null;
+        url = next && !done?.(pageItems) ? origin + next : null;
       }
       return { items, truncated: url !== null };
     },
@@ -127,7 +127,8 @@ export async function fetchExecution(
 
 /**
  * Tinybar `payer` paid for a transaction, from its transfers. For a tick this is the contract: the schedule's payer.
- * `transaction_id` names the hashio relay instead, which paid nothing.
+ * The tick's `transaction_id`, and the `from` of its contract result, name the hashio relay that sent the call which
+ * created the schedule; it paid nothing.
  */
 export function paidBy(transaction: MirrorTransaction, payer: string): bigint {
   return transaction.transfers
