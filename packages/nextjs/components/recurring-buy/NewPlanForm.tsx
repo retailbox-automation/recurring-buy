@@ -400,7 +400,7 @@ const PlanBuilder = ({ network, contract }: { network: RecurringBuyNetwork; cont
               Buy {outSymbol} with {formatToken(amountPerTick, tokenIn!, inInfo)} {formatPeriod(period)},{" "}
               {ticks.toString()} {ticks === 1n ? "time" : "times"}.
             </p>
-            <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 m-0">
+            <dl className="grid grid-cols-1 sm:grid-cols-[auto_1fr] gap-x-6 sm:gap-y-2 m-0 [&>dd]:mb-2 sm:[&>dd]:mb-0">
               <dt className="text-base-content/60">Quote now</dt>
               <dd className="m-0">
                 {quote.data ? formatToken(quote.data.amountOut, tokenOut!, outInfo) : "…"} per buy (SaucerSwap QuoterV2)
@@ -535,7 +535,11 @@ const PlanBuilder = ({ network, contract }: { network: RecurringBuyNetwork; cont
                 {explorer && (
                   <>
                     {" "}
-                    Contract: <ExternalLink href={`${explorer}/contract/${contract}`}>{contract}</ExternalLink>.
+                    Contract:{" "}
+                    <span className="break-all">
+                      <ExternalLink href={`${explorer}/contract/${contract}`}>{contract}</ExternalLink>
+                    </span>
+                    .
                   </>
                 )}
               </p>

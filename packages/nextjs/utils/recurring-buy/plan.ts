@@ -86,13 +86,13 @@ const revertAbi = [...recurringBuyAbi, ...parseAbi(["error Error(string message)
 
 /** A tick's revert reason, as bytes from TickSkipped or an `error_message`, in words. */
 export function describeRevert(data: Hex | null): string {
-  if (!data || data === "0x") return "reverted without a reason (for example, out of gas)";
+  if (!data || data === "0x") return "no reason given; for example, out of gas";
   try {
     const { errorName, args } = decodeErrorResult({ abi: revertAbi, data });
     if (errorName === "Error") return String(args[0]);
     return `${errorName}(${args.map(String).join(", ")})`;
   } catch {
-    return `reverted with ${data.slice(0, 10)}`;
+    return `error ${data.slice(0, 10)}`;
   }
 }
 
@@ -207,7 +207,8 @@ export function chainStatus(events: PlanEvent[], ticks: TickRow[]): ChainStatus 
   if (outcome.kind === "waiting") return { kind: "running", tick: last.tick, due: last.due ?? 0 };
   if (outcome.kind === "due") return { kind: "due", tick: last.tick, due: last.due ?? 0 };
   if (outcome.kind === "missed") return { kind: "broken", tick: last.tick, detail: "Hedera did not run its schedule" };
-  if (outcome.kind === "reverted") return { kind: "broken", tick: last.tick, detail: `it reverted: ${outcome.reason}` };
+  if (outcome.kind === "reverted")
+    return { kind: "broken", tick: last.tick, detail: `it reverted (${outcome.reason})` };
   if (outcome.kind === "cancelled") return { kind: "broken", tick: last.tick, detail: "its schedule was deleted" };
   // A finished tick always schedules the next one or stops the plan, in the same transaction.
   return { kind: "indexing" };

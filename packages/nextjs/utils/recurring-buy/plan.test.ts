@@ -171,12 +171,12 @@ describe("resolvePlan on real schedule records", () => {
     assert.deepEqual(plan?.ticks[0].outcome, {
       kind: "reverted",
       timestamp: "1790691529.110199928",
-      reason: "reverted without a reason (for example, out of gas)",
+      reason: "no reason given; for example, out of gas",
     });
     assert.deepEqual(plan?.status, {
       kind: "broken",
       tick: 1,
-      detail: "it reverted: reverted without a reason (for example, out of gas)",
+      detail: "it reverted (no reason given; for example, out of gas)",
     });
     assert.ok(requested.every(p => !p.includes("nonce")));
   });

@@ -238,7 +238,7 @@ export const PlanDetails = ({
         )}
       </div>
 
-      <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 m-0 text-sm">
+      <dl className="grid grid-cols-1 sm:grid-cols-[auto_1fr] gap-x-6 sm:gap-y-2 m-0 text-sm [&>dd]:mb-2 sm:[&>dd]:mb-0">
         <dt className="text-base-content/60">Buys</dt>
         <dd className="m-0">
           {formatToken(params.amountPerTick, params.tokenIn, tokens.in)} → {tokens.out?.symbol ?? "token"}{" "}

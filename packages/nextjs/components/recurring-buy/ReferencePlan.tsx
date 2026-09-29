@@ -2,19 +2,24 @@
 
 import { PlanDetails } from "./PlanDetails";
 import { ExternalLink, Panel } from "./common";
-import { referencePlan, usePlan, useReferenceNetwork } from "~~/hooks/recurring-buy/useRecurringBuy";
+import { referencePlan, useContractId, usePlan, useReferenceNetwork } from "~~/hooks/recurring-buy/useRecurringBuy";
 
 /** The plan from scaffold.config.ts `referencePlan`, read from the mirror node: works without a wallet and without env. */
 export const ReferencePlan = () => {
   const network = useReferenceNetwork();
   const { data: plan, isPending, isError, error, refetch } = usePlan(network, referencePlan.planId);
+  const { data: contractId } = useContractId(network);
   const { contract, explorer, networkName } = network;
 
   const title = "Reference plan";
   const contractLink =
     contract && explorer ? (
       <span className="text-sm text-base-content/60">
-        RecurringBuy <ExternalLink href={`${explorer}/contract/${contract}`}>{contract}</ExternalLink> on {networkName}
+        RecurringBuy{" "}
+        <ExternalLink href={`${explorer}/contract/${contract}`}>
+          {contractId ?? `${contract.slice(0, 6)}…${contract.slice(-4)}`}
+        </ExternalLink>{" "}
+        on {networkName}
       </span>
     ) : null;
 
