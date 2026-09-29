@@ -42,7 +42,9 @@ const scaffoldConfig = {
 
   pollingInterval: 10000,
 
-  enableBurnerWallet: true,
+  // A burner wallet keeps its private key in the browser's localStorage. It is for automated tests and local
+  // demos only, so it exists only in a build made with NEXT_PUBLIC_ENABLE_BURNER_WALLET=true (see next.config.ts).
+  enableBurnerWallet: process.env.NEXT_PUBLIC_ENABLE_BURNER_WALLET === "true",
 
   rpcOverrides: {
     [chains.hedera.id]: process.env.NEXT_PUBLIC_HEDERA_MAINNET_RPC_URL || "https://mainnet.hashio.io/api",

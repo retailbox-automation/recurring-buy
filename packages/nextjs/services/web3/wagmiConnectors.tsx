@@ -1,6 +1,5 @@
 import { connectorsForWallets } from "@rainbow-me/rainbowkit";
 import { metaMaskWallet, walletConnectWallet } from "@rainbow-me/rainbowkit/wallets";
-import { rainbowkitBurnerWallet } from "burner-connector";
 import * as chains from "viem/chains";
 import scaffoldConfig from "~~/scaffold.config";
 
@@ -22,7 +21,10 @@ export const wagmiConnectors = () => {
     },
   ];
 
-  if (scaffoldConfig.enableBurnerWallet && hasDevNetwork) {
+  // Inlined at build time, so without the flag this branch and the burner-connector package are left out of the bundle.
+  if (process.env.NEXT_PUBLIC_ENABLE_BURNER_WALLET === "true" && scaffoldConfig.enableBurnerWallet && hasDevNetwork) {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { rainbowkitBurnerWallet } = require("burner-connector") as typeof import("burner-connector");
     walletGroups.push({
       groupName: "Development",
       wallets: [rainbowkitBurnerWallet],

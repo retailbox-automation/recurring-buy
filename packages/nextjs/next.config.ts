@@ -7,6 +7,11 @@ const nextConfig: NextConfig = {
   outputFileTracingRoot: path.join(__dirname, "../.."),
   reactStrictMode: true,
   devIndicators: false,
+  // Always defined, so an unset flag is inlined as "" and the burner wallet code is dropped from the bundle
+  // (services/web3/wagmiConnectors.tsx); an undefined NEXT_PUBLIC_ variable would stay a runtime lookup.
+  env: {
+    NEXT_PUBLIC_ENABLE_BURNER_WALLET: process.env.NEXT_PUBLIC_ENABLE_BURNER_WALLET ?? "",
+  },
   typescript: {
     ignoreBuildErrors: process.env.NEXT_PUBLIC_IGNORE_BUILD_ERROR === "true",
   },

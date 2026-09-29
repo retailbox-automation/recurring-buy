@@ -1,5 +1,4 @@
 import { useRef } from "react";
-import { rainbowkitBurnerWallet } from "burner-connector";
 import {
   CheckIcon,
   ClipboardDocumentIcon,
@@ -18,7 +17,8 @@ export const RevealBurnerPKModal = () => {
 
   const handleCopyPK = async () => {
     try {
-      const storage = rainbowkitBurnerWallet.useSessionStorage ? sessionStorage : localStorage;
+      // The burner connector is registered with localStorage (services/web3/wagmiConnectors.tsx).
+      const storage = localStorage;
       const burnerPK = storage?.getItem(BURNER_WALLET_PK_KEY);
       if (!burnerPK) throw new Error("Burner wallet private key not found");
       await copyToClipboard(burnerPK);
