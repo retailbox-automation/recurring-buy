@@ -43,6 +43,7 @@
     "next:lint": "yarn workspace @sh/nextjs lint",
     "next:serve": "yarn workspace @sh/nextjs serve",
     "next:start": "yarn workspace @sh/nextjs start",
+    "next:test": "yarn workspace @sh/nextjs test",
     "postinstall": "husky",
     "saucerswap:build": "yarn workspace @sh/saucerswap build",
     "saucerswap:check-types": "yarn workspace @sh/saucerswap check-types",
