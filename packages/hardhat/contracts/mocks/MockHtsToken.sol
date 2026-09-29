@@ -1,0 +1,44 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.28;
+
+import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+
+import { IHRC719 } from "../interfaces/IHRC719.sol";
+
+/// @notice Test stand-in for an HTS fungible token seen through its EVM facade: ERC-20 plus HIP-719
+/// `associate()`. As on Hedera, an account cannot receive the token until it is associated with it.
+contract MockHtsToken is ERC20, IHRC719 {
+    int64 private constant SUCCESS = 22;
+    int64 private constant TOKEN_ALREADY_ASSOCIATED_TO_ACCOUNT = 194;
+
+    uint8 private immutable _decimals;
+    mapping(address account => bool) public associated;
+
+    event Associated(address indexed account);
+
+    error TokenNotAssociatedToAccount(address account);
+
+    constructor(string memory name_, string memory symbol_, uint8 decimals_) ERC20(name_, symbol_) {
+        _decimals = decimals_;
+    }
+
+    function decimals() public view override returns (uint8) {
+        return _decimals;
+    }
+
+    function mint(address to, uint256 amount) external {
+        _mint(to, amount);
+    }
+
+    function associate() external returns (int64 responseCode) {
+        if (associated[msg.sender]) return TOKEN_ALREADY_ASSOCIATED_TO_ACCOUNT;
+        associated[msg.sender] = true;
+        emit Associated(msg.sender);
+        return SUCCESS;
+    }
+
+    function _update(address from, address to, uint256 value) internal override {
+        if (to != address(0) && !associated[to]) revert TokenNotAssociatedToAccount(to);
+        super._update(from, to, value);
+    }
+}
