@@ -2,6 +2,7 @@
 pragma solidity ^0.8.28;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 import { IHederaScheduleService } from "./interfaces/IHederaScheduleService.sol";
 import { IHRC719 } from "./interfaces/IHRC719.sol";
@@ -18,7 +19,9 @@ import { ISaucerSwapV2Router } from "./interfaces/ISaucerSwapV2Router.sol";
 ///   nothing is taken, and the next tick is scheduled. The plan never buys below its floor.
 /// - the slice cannot be pulled (allowance revoked or too low, balance too low): the plan stops.
 /// Both run inside a self-call under try/catch: an uncaught revert would also undo the next schedule,
-/// and the plan would look active with nothing left to run it.
+/// and the plan would look active with nothing left to run it. The self-call gets all the tick's gas
+/// except RESCHEDULE_GAS, so a swap that runs out of gas is skipped like any other failed swap.
+/// Tokens and pools are external code; `nonReentrant` keeps them from calling back into a plan mid-tick.
 ///
 /// Gas deposit: Hedera charges every scheduled tick to this contract, the schedule's payer, so all plans
 /// pay from one balance. Each plan therefore pre-pays its own ticks. Scheduling a tick moves
@@ -26,7 +29,7 @@ import { ISaucerSwapV2Router } from "./interfaces/ISaucerSwapV2Router.sol";
 /// tick while its gas price stays at or below `reserveGasPrice`. The network charges less (the gas the
 /// tick used, at the current price), and the difference stays in the contract as a shared buffer against
 /// gas price rises; it is not paid out. A plan whose deposit cannot cover the next reservation stops.
-contract RecurringBuy {
+contract RecurringBuy is ReentrancyGuard {
     /// @notice Parameters of a new plan. The path is single-hop: tokenIn -> (pool fee) -> tokenOut.
     struct PlanParams {
         address tokenIn;
@@ -36,12 +39,12 @@ contract RecurringBuy {
         uint256 minAmountOut; // price floor: least tokenOut accepted for one slice
         uint64 period; // seconds between ticks
         uint64 maxTicks; // ticks to run, skipped ones included; 0 = until stopped
-        uint64 tickGasLimit; // gas for one tick: pull, swap and the next schedule
+        uint64 tickGasLimit; // gas for one tick: pull, swap and the next schedule; above RESCHEDULE_GAS
     }
 
     struct Plan {
         address owner;
-        uint64 ticksDone;
+        uint64 ticksDone; // ticks run: bought, skipped, or ended by a failed pull
         bool active;
         uint24 fee;
         address tokenIn;
@@ -71,6 +74,10 @@ contract RecurringBuy {
     uint256 private constant HTS_MAX_AMOUNT = uint256(uint64(type(int64).max));
     /// How far past a full second to look for one with capacity: 1, 2, 4, 8, 16 s.
     uint256 private constant MAX_CAPACITY_DELAY = 16;
+
+    /// @notice Gas a tick keeps back from the swap for scheduling the next tick. On testnet scheduleCall
+    /// took 1.41M gas; the rest covers the capacity probes and the bookkeeping after the swap.
+    uint256 public constant RESCHEDULE_GAS = 1_600_000;
 
     /// @notice The SaucerSwap V2 router every plan swaps through.
     ISaucerSwapV2Router public immutable router;
@@ -116,12 +123,14 @@ contract RecurringBuy {
 
     /// @notice Starts a plan for the caller and schedules its first tick one period from now.
     /// Before the first tick the caller approves this contract on `tokenIn` (an HTS allowance; the total
-    /// it allows caps what the plan can ever spend) and associates with `tokenOut`.
+    /// it allows caps what the plan can ever spend) and associates with `tokenOut`. The allowance belongs
+    /// to the owner and the token, so plans of one owner on the same `tokenIn` share it, and revoking it
+    /// stops all of them.
     /// @dev The first plan for a `tokenIn` also associates this contract with it (HIP-719) and approves
     /// the router, which costs roughly 1.4M gas once.
     /// @param params See PlanParams. `minAmountOut` must be non-zero: a plan always has a price floor.
     /// @return planId The new plan's id.
-    function start(PlanParams calldata params) external payable returns (uint256 planId) {
+    function start(PlanParams calldata params) external payable nonReentrant returns (uint256 planId) {
         if (
             params.tokenIn == address(0) ||
             params.tokenOut == address(0) ||
@@ -129,7 +138,7 @@ contract RecurringBuy {
             params.amountPerTick == 0 ||
             params.minAmountOut == 0 ||
             params.period == 0 ||
-            params.tickGasLimit == 0
+            params.tickGasLimit <= RESCHEDULE_GAS
         ) revert InvalidPlan();
         uint256 reserve = params.tickGasLimit * reserveGasPrice;
         if (msg.value < reserve) revert InsufficientGasDeposit(reserve);
@@ -159,13 +168,15 @@ contract RecurringBuy {
     /// @dev No time check: on testnet a scheduled tick saw block.timestamp one or two seconds before its
     /// expiry second, so a `block.timestamp >= expiry` guard would reject it. The sender check is enough,
     /// since nothing else can make this contract call `tick`.
-    function tick(uint256 planId) external {
+    function tick(uint256 planId) external nonReentrant {
         if (msg.sender != address(this)) revert OnlySelf();
         Plan storage plan = _plans[planId];
         if (!plan.active) revert PlanNotActive(planId);
         uint64 tickNumber = ++plan.ticksDone;
 
-        try this.buy(planId) returns (uint256 amountOut) {
+        uint256 gasLeft = gasleft();
+        uint256 buyGas = gasLeft > RESCHEDULE_GAS ? gasLeft - RESCHEDULE_GAS : 0;
+        try this.buy{ gas: buyGas }(planId) returns (uint256 amountOut) {
             emit TickExecuted(planId, tickNumber, plan.amountPerTick, amountOut);
         } catch (bytes memory reason) {
             if (bytes4(reason) == PullFailed.selector) {
@@ -213,21 +224,22 @@ contract RecurringBuy {
 
     /// @notice Adds HBAR to a running plan's gas deposit, e.g. to keep a plan without maxTicks going.
     /// Anyone may pay; the deposit still only returns to the plan's owner.
-    function topUp(uint256 planId) external payable {
+    function topUp(uint256 planId) external payable nonReentrant {
         Plan storage plan = _plans[planId];
         if (!plan.active) revert PlanNotActive(planId);
         plan.gasDeposit += msg.value;
         emit GasDepositAdded(planId, msg.value);
     }
 
-    /// @notice Stops a running plan and sends the owner what is left of its gas deposit. On a plan that
-    /// already ended by itself (completed, pull failed, deposit used up) it only returns the leftover.
+    /// @notice Stops a running plan and sends what is left of its gas deposit to `refundTo`. On a plan
+    /// that already ended by itself (completed, pull failed, deposit used up) it only returns the leftover.
+    /// If `refundTo` does not accept HBAR the whole call reverts; try again with another address.
     /// Revoking the allowance (`approve(0)` on tokenIn) also stops the spending, with no call to this
     /// contract: the next tick fails to pull and ends the plan.
     /// @dev Also deletes the pending tick's schedule (HIP-1215 deleteSchedule). If Hedera confirms (22),
     /// that tick's reservation is refunded too. If not, the reservation stays to pay for the pending tick,
     /// which then reverts with PlanNotActive.
-    function stop(uint256 planId) external {
+    function stop(uint256 planId, address payable refundTo) external nonReentrant {
         Plan storage plan = _plans[planId];
         if (msg.sender != plan.owner) revert NotPlanOwner(planId);
         if (plan.active) {
@@ -241,9 +253,9 @@ contract RecurringBuy {
         uint256 refund = plan.gasDeposit;
         if (refund == 0) return;
         plan.gasDeposit = 0;
-        (bool sent, ) = msg.sender.call{ value: refund }("");
+        (bool sent, ) = refundTo.call{ value: refund }("");
         if (!sent) revert RefundFailed(planId);
-        emit GasRefunded(planId, msg.sender, refund);
+        emit GasRefunded(planId, refundTo, refund);
     }
 
     /// @notice A plan's full state, including the pending tick (`nextSchedule`, `nextExpiry`). An active
@@ -299,6 +311,8 @@ contract RecurringBuy {
 
     function _end(uint256 planId, Plan storage plan, StopReason reason, int64 hssResponseCode) private {
         plan.active = false;
+        plan.nextSchedule = address(0);
+        plan.nextExpiry = 0;
         emit PlanStopped(planId, plan.ticksDone, reason, hssResponseCode);
     }
 }

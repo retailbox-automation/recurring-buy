@@ -23,10 +23,12 @@ const SAUCE_PER_TICK = 2_046_098n;
 const MIN_AMOUNT_OUT = 1_943_793n;
 const PERIOD = 86_400n;
 
-// A tick that pulls, swaps and reschedules used 1.62M gas on testnet; the reservation price stands in for
-// "about twice the network gas price" in tinybar. Hardhat counts in wei, which changes nothing here.
+// A tick that pulls, swaps and reschedules used 1.62M gas on testnet. The network charges the contract
+// TICK_GAS_PRICE per gas used; the contract reserves at twice that, as the deploy script sets it up.
+// Hardhat counts in wei where Hedera counts in tinybar, which changes nothing here.
 const TICK_GAS_LIMIT = 1_900_000n;
-const RESERVE_GAS_PRICE = 200n;
+const TICK_GAS_PRICE = 100n;
+const RESERVE_GAS_PRICE = 2n * TICK_GAS_PRICE;
 const RESERVE = TICK_GAS_LIMIT * RESERVE_GAS_PRICE;
 
 enum StopReason {
@@ -111,18 +113,24 @@ describe("RecurringBuy", function () {
 
     /**
      * Does what Hedera does at a schedule's expiry second: sends the latest call scheduled for `planId`
-     * from the contract that scheduled it (the schedule's payer). `early` runs it before that second,
-     * as the network does (block.timestamp in a scheduled tick was 1-2 s before its expiry second).
+     * from the contract that scheduled it, which pays the gas used at TICK_GAS_PRICE. `early` runs it
+     * `early` seconds before that second (on testnet block.timestamp in a tick was 1-2 s before it).
      */
-    const runTick = async (planId: bigint, { early = false } = {}) => {
+    const runTick = async (planId: bigint, { early = 0n } = {}) => {
       const tickData = recurringBuy.interface.encodeFunctionData("tick", [planId]);
       for (let index = (await hss.callCount()) - 1n; index >= 0n; index--) {
         const call = await hss.callAt(index);
         if (call.callData !== tickData || call.responseCode !== SUCCESS) continue;
-        if (!early && call.expirySecond > BigInt(await time.latest())) await time.increaseTo(call.expirySecond);
+        const runAt = call.expirySecond - early;
+        if (runAt > BigInt(await time.latest())) await time.setNextBlockTimestamp(runAt);
         const payer = await ethers.getImpersonatedSigner(call.to);
         await network.provider.send("hardhat_setNextBlockBaseFeePerGas", ["0x0"]);
-        return payer.sendTransaction({ to: call.to, data: call.callData, gasLimit: call.gasLimit, gasPrice: 0 });
+        return payer.sendTransaction({
+          to: call.to,
+          data: call.callData,
+          gasLimit: call.gasLimit,
+          gasPrice: TICK_GAS_PRICE,
+        });
       }
       throw new Error(`no tick scheduled for plan ${planId}`);
     };
@@ -212,6 +220,7 @@ describe("RecurringBuy", function () {
 
     it("rejects an incomplete plan", async function () {
       const { recurringBuy, whbar, alice, planParams } = await loadFixture(deployFixture);
+      const rescheduleGas = await recurringBuy.RESCHEDULE_GAS();
       const invalid = [
         { tokenIn: ethers.ZeroAddress },
         { tokenOut: ethers.ZeroAddress },
@@ -220,6 +229,7 @@ describe("RecurringBuy", function () {
         { minAmountOut: 0n },
         { period: 0n },
         { tickGasLimit: 0n },
+        { tickGasLimit: rescheduleGas },
       ];
       for (const overrides of invalid) {
         await expect(
@@ -306,7 +316,7 @@ describe("RecurringBuy", function () {
     it("does not wait for the expiry second (Hedera runs the tick a second or two before it)", async function () {
       const { recurringBuy, startPlan, runTick } = await loadFixture(deployFixture);
       await startPlan();
-      await expect(runTick(1n, { early: true })).to.emit(recurringBuy, "TickExecuted");
+      await expect(runTick(1n, { early: 2n })).to.emit(recurringBuy, "TickExecuted");
     });
 
     it("pulls one slice from the owner and swaps it on SaucerSwap to the owner", async function () {
@@ -360,6 +370,53 @@ describe("RecurringBuy", function () {
       await expect(runTick(1n)).to.emit(recurringBuy, "TickExecuted").withArgs(1n, 2n, AMOUNT_PER_TICK, SAUCE_PER_TICK);
     });
 
+    it("counts skipped ticks toward maxTicks", async function () {
+      const { recurringBuy, sauce, router, alice, startPlan, runTick } = await loadFixture(deployFixture);
+      await startPlan(alice, { maxTicks: 2n, deposit: 2n * RESERVE });
+      await router.setRate(SAUCE_PER_TICK / 2n, AMOUNT_PER_TICK);
+
+      await expect(runTick(1n)).to.emit(recurringBuy, "TickSkipped");
+      const last = runTick(1n);
+      await expect(last).to.emit(recurringBuy, "TickSkipped").withArgs(1n, 2n, tooLittleReceived);
+      await expect(last).to.emit(recurringBuy, "PlanStopped").withArgs(1n, 2n, StopReason.Completed, 0n);
+      expect(await sauce.balanceOf(alice)).to.equal(0n);
+    });
+
+    it("skips a swap that runs out of gas and still schedules the next tick", async function () {
+      const { recurringBuy, whbar, router, alice, startPlan, runTick } = await loadFixture(deployFixture);
+      await startPlan();
+      await router.setBurnGas(true);
+
+      const tick = runTick(1n);
+      await expect(tick).to.emit(recurringBuy, "TickSkipped").withArgs(1n, 1n, "0x");
+      await expect(tick).to.emit(recurringBuy, "TickScheduled").withArgs(1n, 2n, anyValue, anyValue);
+      await expect(tick).to.changeTokenBalance(whbar, alice, 0n);
+    });
+
+    it("skips the tick when a token or pool calls back into the contract", async function () {
+      const { recurringBuy, whbar, sauce, router, stranger, planParams, runTick } = await loadFixture(deployFixture);
+      // The router (standing in for a hostile pool) owns a plan and, mid-swap, tries to stop it: that would
+      // refund the reservation of the tick that is running, which the network then bills to everyone else.
+      await router.associate(sauce);
+      await whbar.mint(router, 3n * AMOUNT_PER_TICK);
+      await router.execute(
+        whbar,
+        whbar.interface.encodeFunctionData("approve", [await recurringBuy.getAddress(), AMOUNT_PER_TICK]),
+      );
+      const startData = recurringBuy.interface.encodeFunctionData("start", [await planParams()]);
+      await router.execute(recurringBuy, startData, { value: 3n * RESERVE });
+      expect((await recurringBuy.plans(1n)).owner).to.equal(await router.getAddress());
+      await router.setCallback(recurringBuy, recurringBuy.interface.encodeFunctionData("stop", [1n, stranger.address]));
+
+      const reentrantCall = recurringBuy.interface.getError("ReentrancyGuardReentrantCall")!.selector;
+      const tick = runTick(1n);
+      await expect(tick).to.emit(recurringBuy, "TickSkipped").withArgs(1n, 1n, reentrantCall);
+      await expect(tick).to.emit(recurringBuy, "TickScheduled").withArgs(1n, 2n, anyValue, anyValue);
+      const plan = await recurringBuy.plans(1n);
+      expect(plan.active).to.equal(true);
+      expect(plan.gasDeposit).to.equal(RESERVE);
+    });
+
     it("stops the plan when the owner revokes the allowance", async function () {
       const { recurringBuy, hss, whbar, alice, startPlan, runTick } = await loadFixture(deployFixture);
       await startPlan();
@@ -381,6 +438,15 @@ describe("RecurringBuy", function () {
       expect(await hss.callCount()).to.equal(1n);
     });
 
+    it("stops the plan when the token returns false instead of reverting", async function () {
+      const { recurringBuy, whbar, alice, startPlan, runTick } = await loadFixture(deployFixture);
+      await startPlan();
+      await whbar.setQuietFailure(true);
+      await whbar.connect(alice).approve(recurringBuy, 0n);
+
+      await expect(runTick(1n)).to.emit(recurringBuy, "PlanStopped").withArgs(1n, 1n, StopReason.PullFailed, 0n);
+    });
+
     it("stops after maxTicks without scheduling another tick", async function () {
       const { recurringBuy, hss, sauce, alice, startPlan, runTick } = await loadFixture(deployFixture);
       await startPlan(alice, { maxTicks: 2n, deposit: 2n * RESERVE });
@@ -393,7 +459,10 @@ describe("RecurringBuy", function () {
 
       expect(await hss.callCount()).to.equal(2n);
       expect(await sauce.balanceOf(alice)).to.equal(2n * SAUCE_PER_TICK);
-      expect((await recurringBuy.plans(1n)).active).to.equal(false);
+      const plan = await recurringBuy.plans(1n);
+      expect(plan.active).to.equal(false);
+      expect(plan.nextSchedule).to.equal(ethers.ZeroAddress);
+      expect(plan.nextExpiry).to.equal(0n);
     });
 
     it("stops the plan when Hedera refuses to schedule the next tick", async function () {
@@ -417,19 +486,31 @@ describe("RecurringBuy", function () {
       const { recurringBuy, hss, alice, bob, startPlan, runTick } = await loadFixture(deployFixture);
       const planA = await startPlan(alice, { deposit: 2n * RESERVE });
       const planB = await startPlan(bob, { deposit: 5n * RESERVE });
+      const balanceBefore = await ethers.provider.getBalance(recurringBuy);
 
-      await expect(runTick(planA)).to.emit(recurringBuy, "TickScheduled");
+      const first = await runTick(planA);
+      await expect(first).to.emit(recurringBuy, "TickScheduled");
       expect((await recurringBuy.plans(planA)).gasDeposit).to.equal(0n);
 
       const callsBefore = await hss.callCount();
-      const exhausted = runTick(planA);
+      const exhausted = await runTick(planA);
       await expect(exhausted).to.emit(recurringBuy, "TickExecuted");
       await expect(exhausted)
         .to.emit(recurringBuy, "PlanStopped")
         .withArgs(planA, 2n, StopReason.GasDepositExhausted, 0n);
       expect(await hss.callCount()).to.equal(callsBefore);
 
-      expect((await recurringBuy.plans(planB)).gasDeposit).to.equal(4n * RESERVE);
+      // The network billed plan A's two ticks to the contract, and they cost less than A reserved for them,
+      // so the contract still holds all of plan B's deposit and B's pending reservation.
+      let billed = 0n;
+      for (const tx of [first, exhausted]) billed += (await tx.wait())!.fee;
+      expect(billed).to.be.greaterThan(0n);
+      expect(await ethers.provider.getBalance(recurringBuy)).to.equal(balanceBefore - billed);
+      expect(billed).to.be.lessThanOrEqual(2n * RESERVE);
+      const planBState = await recurringBuy.plans(planB);
+      expect(planBState.gasDeposit).to.equal(4n * RESERVE);
+      expect(await ethers.provider.getBalance(recurringBuy)).to.be.greaterThanOrEqual(planBState.gasDeposit + RESERVE);
+
       await expect(runTick(planB)).to.emit(recurringBuy, "TickScheduled").withArgs(planB, 2n, anyValue, anyValue);
       expect((await recurringBuy.plans(planB)).gasDeposit).to.equal(3n * RESERVE);
     });
@@ -444,7 +525,7 @@ describe("RecurringBuy", function () {
         .withArgs(planId, RESERVE);
       await expect(runTick(planId)).to.emit(recurringBuy, "TickScheduled").withArgs(planId, 2n, anyValue, anyValue);
 
-      await recurringBuy.connect(alice).stop(planId);
+      await recurringBuy.connect(alice).stop(planId, alice.address);
       await expect(recurringBuy.connect(stranger).topUp(planId, { value: RESERVE }))
         .to.be.revertedWithCustomError(recurringBuy, "PlanNotActive")
         .withArgs(planId);
@@ -457,14 +538,16 @@ describe("RecurringBuy", function () {
       await startPlan(alice, { deposit: 3n * RESERVE });
       const pending = (await recurringBuy.plans(1n)).nextSchedule;
 
-      const stop = recurringBuy.connect(alice).stop(1n);
+      const stop = recurringBuy.connect(alice).stop(1n, alice.address);
       await expect(stop).to.emit(recurringBuy, "PlanStopped").withArgs(1n, 0n, StopReason.StoppedByOwner, SUCCESS);
       await expect(stop)
         .to.emit(recurringBuy, "GasRefunded")
         .withArgs(1n, alice.address, 3n * RESERVE);
       await expect(stop).to.changeEtherBalances([alice, recurringBuy], [3n * RESERVE, -3n * RESERVE]);
       expect(await hss.lastDeleted()).to.equal(pending);
-      expect((await recurringBuy.plans(1n)).active).to.equal(false);
+      const plan = await recurringBuy.plans(1n);
+      expect(plan.active).to.equal(false);
+      expect(plan.nextSchedule).to.equal(ethers.ZeroAddress);
     });
 
     it("keeps the pending tick's reservation when its schedule cannot be deleted; that tick then reverts", async function () {
@@ -472,7 +555,7 @@ describe("RecurringBuy", function () {
       await startPlan(alice, { deposit: 3n * RESERVE });
       await hss.setResponseCodes(SUCCESS, INVALID_SCHEDULE_ID);
 
-      const stop = recurringBuy.connect(alice).stop(1n);
+      const stop = recurringBuy.connect(alice).stop(1n, alice.address);
       await expect(stop)
         .to.emit(recurringBuy, "PlanStopped")
         .withArgs(1n, 0n, StopReason.StoppedByOwner, INVALID_SCHEDULE_ID);
@@ -487,12 +570,12 @@ describe("RecurringBuy", function () {
       await whbar.connect(alice).approve(recurringBuy, 0n);
       await runTick(1n);
 
-      const stop = recurringBuy.connect(alice).stop(1n);
+      const stop = recurringBuy.connect(alice).stop(1n, alice.address);
       await expect(stop).not.to.emit(recurringBuy, "PlanStopped");
       await expect(stop)
         .to.emit(recurringBuy, "GasRefunded")
         .withArgs(1n, alice.address, 2n * RESERVE);
-      await expect(recurringBuy.connect(alice).stop(1n))
+      await expect(recurringBuy.connect(alice).stop(1n, alice.address))
         .to.be.revertedWithCustomError(recurringBuy, "NothingToRefund")
         .withArgs(1n);
     });
@@ -501,12 +584,29 @@ describe("RecurringBuy", function () {
       const { recurringBuy, alice, stranger, startPlan } = await loadFixture(deployFixture);
       await startPlan(alice, { deposit: 3n * RESERVE });
 
-      await expect(recurringBuy.connect(stranger).stop(1n))
+      await expect(recurringBuy.connect(stranger).stop(1n, stranger.address))
         .to.be.revertedWithCustomError(recurringBuy, "NotPlanOwner")
         .withArgs(1n);
       const plan = await recurringBuy.plans(1n);
       expect(plan.active).to.equal(true);
       expect(plan.gasDeposit).to.equal(2n * RESERVE);
+    });
+
+    it("sends the refund where the owner asks, and stops nothing if that address refuses HBAR", async function () {
+      const { recurringBuy, whbar, alice, bob, startPlan } = await loadFixture(deployFixture);
+      await startPlan(alice, { deposit: 3n * RESERVE });
+
+      // A contract with no receive function (here the token) cannot take the refund.
+      await expect(recurringBuy.connect(alice).stop(1n, await whbar.getAddress()))
+        .to.be.revertedWithCustomError(recurringBuy, "RefundFailed")
+        .withArgs(1n);
+      expect((await recurringBuy.plans(1n)).active).to.equal(true);
+
+      const stop = recurringBuy.connect(alice).stop(1n, bob.address);
+      await expect(stop)
+        .to.emit(recurringBuy, "GasRefunded")
+        .withArgs(1n, bob.address, 3n * RESERVE);
+      await expect(stop).to.changeEtherBalance(bob, 3n * RESERVE);
     });
   });
 });
