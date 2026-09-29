@@ -1,1 +1,6 @@
-{"contract_id": "0.0.10777783", "evm_address": "0x5a2b7487bef2d262fbc8a5fb9903454eb8b978fd", "created_timestamp": "1790691164.501513105", "deleted": false}
+{
+  "contract_id": "0.0.10777783",
+  "evm_address": "0x5a2b7487bef2d262fbc8a5fb9903454eb8b978fd",
+  "created_timestamp": "1790691164.501513105",
+  "deleted": false
+}

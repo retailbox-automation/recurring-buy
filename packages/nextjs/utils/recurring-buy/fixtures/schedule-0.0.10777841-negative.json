@@ -1,1 +1,14 @@
-{"admin_key":{"_type":"ProtobufEncoded","key":"0a0518b7e99105"},"deleted":false,"consensus_timestamp":"1790691471.337917656","creator_account_id":"0.0.10777774","executed_timestamp":"1790691529.110199928","expiration_time":"1790691529.000000000","memo":"","payer_account_id":"0.0.10777783","schedule_id":"0.0.10777841","signatures":[],"transaction_body":"GiIKFiIUWit0h77y0mL7yKX7mQNFTri5eP0Qmr0OIgQ+r12f","wait_for_expiry":true}
+{
+  "admin_key": { "_type": "ProtobufEncoded", "key": "0a0518b7e99105" },
+  "deleted": false,
+  "consensus_timestamp": "1790691471.337917656",
+  "creator_account_id": "0.0.10777774",
+  "executed_timestamp": "1790691529.110199928",
+  "expiration_time": "1790691529.000000000",
+  "memo": "",
+  "payer_account_id": "0.0.10777783",
+  "schedule_id": "0.0.10777841",
+  "signatures": [],
+  "transaction_body": "GiIKFiIUWit0h77y0mL7yKX7mQNFTri5eP0Qmr0OIgQ+r12f",
+  "wait_for_expiry": true
+}

@@ -3366,6 +3366,7 @@ __metadata:
     "@scaffold-hbar-ui/components": ^2.0.0
     "@scaffold-hbar-ui/debug-contracts": ^2.0.0
     "@scaffold-hbar-ui/hooks": ^1.1.0
+    "@sh/saucerswap": "*"
     "@tailwindcss/postcss": latest
     "@tanstack/react-query": ^5.59.15
     "@trivago/prettier-plugin-sort-imports": ^4.3.0
@@ -3398,7 +3399,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@sh/saucerswap@workspace:packages/saucerswap":
+"@sh/saucerswap@*, @sh/saucerswap@workspace:packages/saucerswap":
   version: 0.0.0-use.local
   resolution: "@sh/saucerswap@workspace:packages/saucerswap"
   dependencies:

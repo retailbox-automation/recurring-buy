@@ -6,6 +6,17 @@ export type ScaffoldConfig = {
   rpcOverrides?: Record<number, string>;
   enableBurnerWallet: boolean;
   walletConnectProjectId: string;
+  referencePlan: ReferencePlan;
+};
+
+/**
+ * A plan anyone can watch on the home page, read from the mirror node with no wallet. `contract` is null until a
+ * RecurringBuy is deployed and has run a plan; the home page then says so.
+ */
+export type ReferencePlan = {
+  chainId: number;
+  contract: `0x${string}` | null;
+  planId: bigint;
 };
 
 const hederaLocalFork = {
@@ -39,6 +50,12 @@ const scaffoldConfig = {
   },
 
   walletConnectProjectId: process.env.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID || "3a8170812b534d0ff9d794f19a901d64",
+
+  referencePlan: {
+    chainId: chains.hederaTestnet.id,
+    contract: null,
+    planId: 1n,
+  },
 } as const satisfies ScaffoldConfig;
 
 export default scaffoldConfig;

@@ -10,6 +10,10 @@ defaults:
 routes:
   - name: home
     path: /
+  - name: new-plan
+    path: /plans/new
+  - name: my-plans
+    path: /plans
   - name: debug-contracts
     path: /debug
   - name: block-explorer

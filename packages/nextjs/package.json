@@ -3,13 +3,13 @@
   "private": true,
   "version": "0.1.0",
   "scripts": {
-    "build": "next build",
-    "check-types": "tsc --noEmit --incremental",
-    "dev": "next dev",
+    "build": "tsc -p ../saucerswap/tsconfig.json && next build",
+    "check-types": "tsc -p ../saucerswap/tsconfig.json && tsc --noEmit --incremental",
+    "dev": "tsc -p ../saucerswap/tsconfig.json && next dev",
     "format": "prettier --write . '!(node_modules|.next|contracts)/**/*'",
     "lint": "next lint",
     "serve": "next start",
-    "start": "next dev",
+    "start": "tsc -p ../saucerswap/tsconfig.json && next dev",
     "test": "tsc -p tsconfig.test.json && node --test .test-build/utils/recurring-buy/*.test.js"
   },
   "dependencies": {
@@ -20,6 +20,7 @@
     "@scaffold-hbar-ui/components": "^2.0.0",
     "@scaffold-hbar-ui/debug-contracts": "^2.0.0",
     "@scaffold-hbar-ui/hooks": "^1.1.0",
+    "@sh/saucerswap": "*",
     "@tanstack/react-query": "^5.59.15",
     "blo": "^1.2.0",
     "burner-connector": "0.0.20",
