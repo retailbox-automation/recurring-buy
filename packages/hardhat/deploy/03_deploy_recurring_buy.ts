@@ -34,7 +34,7 @@ const deployRecurringBuy: DeployFunction = async function (hre: HardhatRuntimeEn
     args: [router, (BigInt(gasPrice) / WEIBAR_PER_TINYBAR) * RESERVE_MARGIN],
     log: true,
     autoMine: true,
-    gasLimit: "1800000", // deploying takes about 1.5M gas
+    gasLimit: "2000000", // deploying took 1.58M gas on the Hardhat network
     gasPrice,
   });
 };
