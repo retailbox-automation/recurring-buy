@@ -6,10 +6,11 @@ Briefing for coding agents (Claude Code, Cursor, Codex) working in this reposito
 
 A scaffold-hbar template for recurring buys on SaucerSwap V2. One contract, `RecurringBuy`, holds every plan. Once per period the Hedera Schedule Service (HSS, system contract `0x16b`, HIP-1215) calls the contract's `tick`, which takes one buy's worth from the plan owner under an HTS allowance, swaps it on SaucerSwap to the owner, and schedules the next tick.
 
-- `packages/hardhat`: `RecurringBuy.sol`, mocks, tests, deploy script (Hardhat, hardhat-deploy). Hardhat only; there is no Foundry package.
+- `packages/hardhat`: `RecurringBuy.sol`, mocks, tests, deploy script (Hardhat, hardhat-deploy).
+- `packages/foundry`: the same `contracts/`, byte for byte, with tests in Solidity and a `forge script` deploy. A project created from the template has one of the two; see "Two frameworks" below.
 - `packages/nextjs`: the app (Next.js App Router, RainbowKit, wagmi, viem, DaisyUI).
 - `packages/saucerswap`: `@sh/saucerswap`, a SaucerSwap V2 client with no React in it. See its README.
-- `docs/testnet-findings.md`: what two prototype runs, this contract (run E) and its wrap step (run G) measured on testnet. Code comments cite it by label (`A3`, `B7`). Next to it: `costs.md`, `how-it-works.md` (with the known limitations), `verify-ticks.md` and `checks.md`, which hold what the README leaves out.
+- `docs/testnet-findings.md`: what two prototype runs, this contract (run E), its Foundry variant (run F) and its wrap step (run G) measured on testnet. Code comments cite it by label (`A3`, `B7`). Next to it: `costs.md`, `how-it-works.md` (with the known limitations), `verify-ticks.md` and `checks.md`, which hold what the README leaves out.
 
 ## Package manager
 
@@ -30,6 +31,11 @@ yarn next:build
 
 yarn hardhat:account:generate    # encrypted deployer key in packages/hardhat/.env
 yarn hardhat:deploy:testnet      # deploys RecurringBuy to Hedera testnet, asks for the key's password
+
+yarn foundry:test                # the same tests in Solidity; needs Foundry 1.7.1, no network
+yarn foundry:lint                # forge fmt --check on test/ and script/
+yarn foundry:account:generate    # encrypted keystore ~/.foundry/keystores/recurring-buy-deployer
+yarn foundry:deploy:testnet      # forge script, then writes deployedContracts.ts
 ```
 
 `yarn hardhat:deploy` on any network other than `hederaTestnet` and `hederaMainnet` deploys nothing: the script skips `RecurringBuy` where there is no Schedule Service. The Hardhat network forks testnet through hashio, so `yarn hardhat:test` needs network access.
@@ -37,9 +43,10 @@ yarn hardhat:deploy:testnet      # deploys RecurringBuy to Hedera testnet, asks 
 ## Where things live
 
 - Contract: `packages/hardhat/contracts/RecurringBuy.sol`. Interfaces for the four things it calls are in `contracts/interfaces/`, their test stand-ins in `contracts/mocks/`.
+- Foundry: `packages/foundry/test/RecurringBuy.t.sol` has the same tests on the same mocks, placed with `vm.etch`; it reads a tick's gas with `vm.lastCallGas` and its calls with `vm.startStateDiffRecording`. `script/DeployRecurringBuy.s.sol` deploys, and `scripts-js/generateTsAbis.mjs` writes `deployedContracts.ts` from the broadcast.
 - Contract tests: `packages/hardhat/test/RecurringBuy.test.ts`. The fixture puts `MockScheduleService` at `0x16b` and `MockTokenService` at `0x167` with `hardhat_setCode`. `runTick` plays the network: it replays the latest scheduled call from the contract's own address, with the scheduled gas limit.
 - Deploy script: `packages/hardhat/deploy/00_deploy_recurring_buy.ts`. After a deploy, the address and ABI are written to `packages/nextjs/contracts/deployedContracts.ts`.
-- The app's contract ABI: `packages/nextjs/utils/recurring-buy/abi.ts`, written out by hand so the app builds before any deployment and can read a contract it did not deploy. `abi.test.ts` compares it with the compiled artifact, so run `yarn hardhat:compile` before `yarn next:test`.
+- The app's contract ABI: `packages/nextjs/utils/recurring-buy/abi.ts`, written out by hand so the app builds before any deployment and can read a contract it did not deploy. `abi.test.ts` compares it with the compiled artifact, Hardhat's or Foundry's, so run `yarn hardhat:compile` or `yarn foundry:compile` before `yarn next:test`.
 - Plan history and status: `packages/nextjs/utils/recurring-buy/plan.ts` and `mirror.ts`. Hooks: `packages/nextjs/hooks/recurring-buy/useRecurringBuy.ts`. Screens: `packages/nextjs/components/recurring-buy/`, routes `/`, `/plans/new`, `/plans`.
 - Which contract the app uses: its own deployment from `deployedContracts.ts`, otherwise `referencePlan.contract` in `packages/nextjs/scaffold.config.ts`.
 - Networks: `packages/hardhat/hardhat.config.ts` (`hederaTestnet` 296, `hederaMainnet` 295) and `packages/nextjs/scaffold.config.ts`.
@@ -93,7 +100,17 @@ Other limits worth knowing: a second with no capacity returns `SCHEDULE_EXPIRY_I
 - **A different action per tick** (rebalance, claim, pay): replace the body of `buy`. Keep it a self-call that reverts on failure, keep `tick` free of anything that can fail, and keep `_chargeTick` last.
 - **Spending HBAR directly:** a tick has no HBAR of the owner's to spend; the owner must hold WHBAR. `/plans/new` wraps HBAR into WHBAR through SaucerSwap's WhbarHelper (`buildWrapHbar` in `@sh/saucerswap`). Wrapping inside the contract would mean the contract holds the owner's funds between ticks, which this design avoids.
 
-Write the test first. Every behaviour of `tick` has a test in `RecurringBuy.test.ts`; add yours next to it.
+Write the test first. Every behaviour of `tick` has a test in `RecurringBuy.test.ts` and its twin in `RecurringBuy.t.sol`; add yours to both.
+
+## Two frameworks
+
+create-scaffold-hbar (0.4.x, `src/tasks/copy-template-files.ts` and `src/tasks/create-first-git-commit.ts`) makes a Hardhat or a Foundry project out of this repository:
+
+- It deletes the package of the framework not chosen, `packages/hardhat` or `packages/foundry`, and removes it from the root `workspaces`. So each package carries its own `contracts/`. Change both copies; `yarn gate:contracts` fails when they differ. `forge fmt` leaves `contracts/` alone, so prettier's formatting (Hardhat's) is the only one.
+- In the root `package.json` it deletes the other framework's `hardhat:*` or `foundry:*` scripts and cuts `&& yarn <other>:<script>` out of scripts that chain them, such as `lint` and `format`. A script meant for both variants names both frameworks in one chain.
+- `{run:framework:<script>}` in `template.json`'s outro becomes `yarn hardhat:<script>` or `yarn foundry:<script>`: each such command needs a script for both frameworks.
+- For Foundry it runs `forge install` for every library that `packages/foundry/remappings.txt` maps into `lib/`, with the URL from the root `.gitmodules` and the tag from `packages/foundry/foundry.lock`. A new library needs all three. A Hardhat project keeps `.gitmodules`, which lists paths it does not have; git ignores that.
+- In npm projects it rewrites text files for npm, `packages/foundry/package.json` included, so Foundry scripts must not call `yarn`.
 
 ## Rules for changes
 
@@ -107,11 +124,13 @@ Write the test first. Every behaviour of `tick` has a test in `RecurringBuy.test
 
 ```bash
 yarn hardhat:test && yarn next:test && yarn saucerswap:test
+yarn foundry:test                                # Foundry 1.7.1
 yarn lint && yarn next:check-types && yarn hardhat:check-types
+yarn gate:contracts                              # the two copies of contracts/ are the same
 yarn gate:test                                   # gate tools: every check has a must-fail twin
 yarn gate:manifest                               # template.json vs the create-scaffold-hbar schema
 yarn gate:secrets                                # secrets and .env in the tree and git history
-yarn gate:local                                  # full gate on a fresh scaffold of the last local commit
+yarn gate:local                                  # full gate on fresh scaffolds of the last local commit: Hardhat, then Foundry
 bash tools/gate/local-gate.sh <owner/repo[#branch]> <package-manager>   # the same from GitHub, e.g. for the npm leg
 npx hedera-harness validate                      # install, lint, build, test, then renders core routes
 ```

@@ -127,8 +127,11 @@ export function scanTree(dir) {
     }
     let buffer;
     try {
-      if (fs.lstatSync(path.join(dir, rel)).isSymbolicLink()) {
-        report.skipped++; // the link target is a tracked file and is scanned on its own
+      const stat = fs.lstatSync(path.join(dir, rel));
+      // A link's target is a tracked file and is scanned on its own. A directory listed by git is a
+      // submodule: third-party code pinned by commit (the Foundry libraries).
+      if (stat.isSymbolicLink() || stat.isDirectory()) {
+        report.skipped++;
         continue;
       }
       buffer = fs.readFileSync(path.join(dir, rel));
@@ -203,7 +206,7 @@ function main() {
   }
   const tree = scanTree(args.tree);
   const findings = [...tree.findings];
-  let summary = `tree: ${tree.scanned} files scanned, ${tree.skipped} skipped (vendored/binary/symlink), ${tree.readErrors.length} read errors`;
+  let summary = `tree: ${tree.scanned} files scanned, ${tree.skipped} skipped (vendored/binary/symlink/submodule), ${tree.readErrors.length} read errors`;
   if (args.history) {
     const history = scanHistory(args.history);
     findings.push(...history.findings);

@@ -5,13 +5,24 @@
   "workspaces": {
     "packages": [
       "packages/hardhat",
+      "packages/foundry",
       "packages/nextjs",
       "packages/saucerswap"
     ]
   },
   "scripts": {
-    "format": "yarn next:format && yarn hardhat:format",
-    "gate:local": "bash tools/gate/local-gate.sh --local yarn",
+    "foundry:account": "yarn workspace @sh/foundry account",
+    "foundry:account:generate": "yarn workspace @sh/foundry account:generate",
+    "foundry:account:import": "yarn workspace @sh/foundry account:import",
+    "foundry:clean": "yarn workspace @sh/foundry clean",
+    "foundry:compile": "yarn workspace @sh/foundry compile",
+    "foundry:deploy:testnet": "yarn workspace @sh/foundry deploy:testnet",
+    "foundry:format": "yarn workspace @sh/foundry format",
+    "foundry:lint": "yarn workspace @sh/foundry lint",
+    "foundry:test": "yarn workspace @sh/foundry test",
+    "format": "yarn next:format && yarn hardhat:format && yarn foundry:format",
+    "gate:contracts": "node tools/gate/same-contracts.mjs",
+    "gate:local": "bash tools/gate/local-gate.sh --local yarn && GATE_FRAMEWORK=foundry bash tools/gate/local-gate.sh --local yarn",
     "gate:manifest": "node tools/gate/validate-template-json.mjs",
     "gate:secrets": "node tools/gate/scan-secrets.mjs --tree . --history .",
     "gate:test": "node --test tools/gate/gate.test.mjs",
@@ -35,7 +46,7 @@
     "hardhat:verify:testnet": "yarn workspace @sh/hardhat verify:testnet",
     "hardhat:verify:mainnet": "yarn workspace @sh/hardhat verify:mainnet",
     "harness:run": "hedera-harness run .harness/spec.yaml",
-    "lint": "yarn next:lint && yarn hardhat:lint && yarn saucerswap:lint",
+    "lint": "yarn next:lint && yarn hardhat:lint && yarn foundry:lint && yarn saucerswap:lint",
     "next:build": "yarn workspace @sh/nextjs build",
     "next:check-types": "yarn workspace @sh/nextjs check-types",
     "next:dev": "yarn workspace @sh/nextjs dev",

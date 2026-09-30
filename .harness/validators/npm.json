@@ -12,16 +12,21 @@
     },
     {
       "name": "lint",
-      "command": "npm run next:lint -- --max-warnings=0 && npm run hardhat:lint -- --max-warnings=0",
+      "command": "npm run next:lint -- --max-warnings=0 && if [ -d packages/hardhat ]; then npm run hardhat:lint -- --max-warnings=0; else npm run foundry:lint; fi",
       "timeoutMs": 300000,
-      "purpose": "Lint both packages with zero warnings allowed."
+      "purpose": "Lint the app and the contracts package, Hardhat or Foundry, whichever the project has. ESLint allows zero warnings."
     },
     {
       "name": "build",
-      "command": "npm run hardhat:compile && npm run next:build",
+      "command": "if [ -d packages/hardhat ]; then npm run hardhat:compile; else npm run foundry:compile; fi && npm run next:build",
       "timeoutMs": 600000,
       "purpose": "Compile contracts and build the Next.js app (includes type checks)."
     },
-    { "name": "test", "command": "npm run hardhat:test", "timeoutMs": 600000, "purpose": "Contract tests." }
+    {
+      "name": "test",
+      "command": "if [ -d packages/hardhat ]; then npm run hardhat:test; else npm run foundry:test; fi",
+      "timeoutMs": 600000,
+      "purpose": "Contract tests."
+    }
   ]
 }

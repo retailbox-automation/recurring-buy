@@ -19,7 +19,7 @@ Take SaucerSwap away and a tick has nothing to do: the swap is the purchase. Tak
 
 Three Hedera services meet in one tick: the Schedule Service starts it (HIP-1215 `scheduleCall`, with `hasScheduleCapacity` before it and `deleteSchedule` at `stop`), the Token Service moves the tokens (an HTS allowance, HIP-719 association, and `getTokenInfo` for the router's approval: a token with a finite supply accepts no more than its maximum supply), and the Smart Contract Service runs the contract. The app reads the outcome from the mirror node.
 
-The deploy script (`packages/hardhat/deploy/00_deploy_recurring_buy.ts`) passes the contract two things: SaucerSwap's V2 router for the network, and a reserve gas price of twice the gas price the relay reports at that moment (`eth_gasPrice`). It then writes the address and ABI to `packages/nextjs/contracts/deployedContracts.ts`, and the app starts using that contract.
+The deploy script (`packages/hardhat/deploy/00_deploy_recurring_buy.ts`) passes the contract two things: SaucerSwap's V2 router for the network, and a reserve gas price of twice the gas price the relay reports at that moment (`eth_gasPrice`). It then writes the address and ABI to `packages/nextjs/contracts/deployedContracts.ts`, and the app starts using that contract. The Foundry script, `packages/foundry/script/DeployRecurringBuy.s.sol`, passes the same two arguments, and `scripts-js/generateTsAbis.mjs` writes the same file.
 
 ## The app
 
@@ -29,6 +29,7 @@ The app rebuilds a plan's history from the contract's events (`PlanCreated`, `Ti
 
 ```
 packages/hardhat     RecurringBuy.sol, its mocks and tests, the deploy script
+packages/foundry     the same contracts/, tests in Solidity, a forge deploy script
 packages/nextjs      the app: /, /plans/new, /plans, plus the starter's Debug Contracts and block explorer
 packages/saucerswap  @sh/saucerswap: SaucerSwap V2 addresses, quotes, swap paths, HTS association, WHBAR wrapping
 docs                 what was measured on testnet, costs, how to check a tick

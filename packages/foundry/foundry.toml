@@ -1,0 +1,32 @@
+[profile.default]
+src = "contracts"
+test = "test"
+script = "script"
+out = "out"
+libs = ["lib"]
+# solc and optimizer as in the Hardhat variant's hardhat.config.ts. Hardhat compiles for its default EVM
+# version, paris; this package targets cancun, as the starter's Foundry package does. Hedera ran a cancun build
+# (docs/testnet-findings.md, run F).
+solc = "0.8.28"
+optimizer = true
+optimizer_runs = 200
+evm_version = "cancun"
+
+[rpc_endpoints]
+hedera_testnet = "https://testnet.hashio.io/api"
+hedera_mainnet = "https://mainnet.hashio.io/api"
+
+[fmt]
+line_length = 120
+tab_width = 4
+quote_style = "double"
+bracket_spacing = true
+int_types = "long"
+# contracts/ is the same source as in the template's Hardhat variant and keeps its prettier formatting.
+ignore = ["contracts/*.sol", "contracts/**/*.sol"]
+
+[lint]
+# Mocks are test code. RecurringBuy's two narrowing casts are bounded: a revert reason's selector, and an
+# expiry second.
+ignore = ["contracts/mocks/*.sol"]
+exclude_lints = ["unsafe-typecast"]

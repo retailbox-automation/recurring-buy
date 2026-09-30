@@ -1,7 +1,8 @@
 name: Template gate
 
 # Scaffolds this template from GitHub with create-scaffold-hbar and runs the
-# eligibility gate (tools/gate/local-gate.sh) on every Node / package manager leg.
+# eligibility gate (tools/gate/local-gate.sh) on every Node / package manager leg
+# with Hardhat, the default, and on Node 22 with Foundry.
 # create-scaffold-hbar deletes template.json from the projects it creates, so in
 # those projects the detect job finds no manifest and the gate jobs are skipped.
 
@@ -47,6 +48,8 @@ jobs:
         run: yarn gate:test
       - name: template.json against the create-scaffold-hbar 0.4.0 schema
         run: yarn gate:manifest
+      - name: Hardhat and Foundry packages carry the same contracts
+        run: yarn gate:contracts
       - name: Secret scan (regex, tree and full history)
         run: yarn gate:secrets
       - name: Secret scan (gitleaks 8.30.1, full history)
@@ -90,4 +93,36 @@ jobs:
       - name: Gate on a fresh scaffold from GitHub
         env:
           GH_TOKEN: ${{ github.token }}
+        run: bash tools/gate/local-gate.sh "${{ github.repository }}#${{ github.event.pull_request.head.sha || github.sha }}" ${{ matrix.pm }}
+
+  fresh-scaffold-foundry:
+    needs: [detect, checks]
+    if: needs.detect.outputs.is-template == 'true'
+    name: scaffold · foundry · node 22 · ${{ matrix.pm }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        pm: [yarn, npm]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: corepack enable
+      - name: Foundry 1.7.1 (forge 1.8 cannot run forge script against the Hedera relay)
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: v1.7.1
+      - name: Git identity (create-scaffold-hbar makes the first commit)
+        run: |
+          git config --global user.name "template gate"
+          git config --global user.email "gate@users.noreply.github.com"
+      - name: Install gate tools (the manifest validator imports zod)
+        run: yarn install --immutable
+      - name: Gate on a fresh Foundry scaffold from GitHub
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GATE_FRAMEWORK: foundry
         run: bash tools/gate/local-gate.sh "${{ github.repository }}#${{ github.event.pull_request.head.sha || github.sha }}" ${{ matrix.pm }}

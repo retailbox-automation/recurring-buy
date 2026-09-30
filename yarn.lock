@@ -3313,6 +3313,12 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@sh/foundry@workspace:packages/foundry":
+  version: 0.0.0-use.local
+  resolution: "@sh/foundry@workspace:packages/foundry"
+  languageName: unknown
+  linkType: soft
+
 "@sh/hardhat@workspace:packages/hardhat":
   version: 0.0.0-use.local
   resolution: "@sh/hardhat@workspace:packages/hardhat"

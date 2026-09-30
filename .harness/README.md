@@ -6,7 +6,7 @@
 | --- | --- |
 | `spec.yaml` | baseline commands and the validators to run |
 | `validators/static.json` | required files, forbidden `.env` files, `template.json` and harness pin assertions (checked only where `template.json` exists; the CLI deletes it from scaffolded projects) |
-| `validators/yarn.json` | install, lint with zero warnings, contract compile and Next.js build, contract tests |
+| `validators/yarn.json` | install, lint with zero warnings, contract compile and Next.js build, contract tests; each command picks `hardhat:` or `foundry:` scripts by which package the project has |
 | `validators/npm.json` | the same commands for a project created with `--package-manager npm` |
 | `validators/playwright-smoke.yaml` | boots the app and renders the core routes; `tools/gate/local-gate.sh` probes the same routes over HTTP |
 

@@ -2,7 +2,7 @@
 
 Buy a token on SaucerSwap on a schedule: the same amount every hour, day or week. Hedera runs every purchase itself, and your tokens stay in your wallet until the moment each one is spent.
 
-This is a [scaffold-hbar](https://docs.hedera.com/solutions/tools/scaffold-hbar/index) template: a Solidity contract, its tests, and a Next.js app in one workspace, for Hedera testnet and mainnet.
+This is a [scaffold-hbar](https://docs.hedera.com/solutions/tools/scaffold-hbar/index) template: a Solidity contract, its tests, and a Next.js app in one workspace, for Hedera testnet and mainnet. The contract comes with Hardhat or with Foundry, as you choose.
 
 ## What it does
 
@@ -23,11 +23,14 @@ npx create-scaffold-hbar@latest my-app --template retailbox-automation/recurring
 
 With `npm create`, put `--` before the CLI's flags: `npm create scaffold-hbar@latest my-app -- --template <owner/repo>`. Without `--`, `npm` keeps `--template` for itself: npm@12 stops with `EUNKNOWNCONFIG Unknown cli flags: --template`, and npm@10 drops the flag, so the CLI falls back to its interactive template prompt. Add `--package-manager npm` for an npm-based project. The examples below use Yarn; in an npm-based project the same scripts run as `npm run <script>`.
 
+The CLI asks for the Solidity framework: Hardhat, the default, or Foundry. `-s hardhat` or `-s foundry` answers without the prompt. Both variants have the same contract, tests of the same behaviour and the same app.
+
 ## Prerequisites
 
 - Node.js 20.18.3 or later
 - Git with `user.name` and `user.email` set (the CLI makes the first commit)
 - Yarn (`corepack enable` installs it), or npm, for npm-based projects
+- For the Foundry variant: Foundry 1.7.1 (`foundryup -v v1.7.1`). With forge 1.8 and later, `forge script` fails against Hedera's JSON-RPC relay ([hiero-json-rpc-relay#5826](https://github.com/hiero-ledger/hiero-json-rpc-relay/issues/5826))
 - To deploy or to start a plan: a Hedera testnet account with HBAR from the [portal faucet](https://portal.hedera.com/faucet), and an EVM wallet set to Hedera Testnet (chain id 296)
 
 ## Look at it first: no wallet, no `.env`
@@ -46,6 +49,15 @@ yarn hardhat:deploy:testnet     # asks for the key's password
 ```
 
 Fund the deployer's address from the faucet between the two commands. The deploy writes the address and ABI to `packages/nextjs/contracts/deployedContracts.ts`, and the app starts using that contract. It used 2,176,533 gas, 2.37 HBAR, on testnet. To show the source on Hashscan, verify it with Sourcify's v2 API as in [packages/hardhat/README.md](packages/hardhat/README.md#verify-the-source): `yarn hardhat:verify:testnet` calls the v1 API, which answered 404 when we tried it. The contract's tests run on mocks: `yarn hardhat:test`.
+
+### Deploy with Foundry
+
+```bash
+yarn foundry:account:generate   # a deployer key, in an encrypted keystore in ~/.foundry/keystores
+yarn foundry:deploy:testnet     # asks for the keystore password
+```
+
+Fund the address the first command prints before the second. The deploy writes `deployedContracts.ts` the same way; it used 2,134,668 gas, 2.33 HBAR, on testnet. [packages/foundry/README.md](packages/foundry/README.md) has the command that verifies the source on Sourcify. The same tests, in Solidity: `yarn foundry:test`.
 
 ## Start a plan: what you sign and what it costs
 
@@ -81,12 +93,13 @@ This template's contract, deployed from this repository on 2026-09-30, and the r
 | A skipped tick: plan #2's floor was above the price, nothing taken, next tick scheduled | schedule [0.0.10795970](https://hashscan.io/testnet/schedule/0.0.10795970), run at [1790792373.084332104](https://hashscan.io/testnet/transaction/1790792373.084332104) |
 | `stop`: pending schedule deleted, deposit and its reservation refunded | [1790792387.304319777](https://hashscan.io/testnet/transaction/1790792387.304319777); schedule [0.0.10796029](https://hashscan.io/testnet/schedule/0.0.10796029) deleted, never run |
 | Wrap 0.1 HBAR into WHBAR with the transaction `/plans/new` sends | [1790794391.315370441](https://hashscan.io/testnet/transaction/1790794391.315370441) |
+| The same contract deployed with the Foundry variant, source verified on Sourcify (exact match) | [0.0.10796292](https://hashscan.io/testnet/contract/0.0.10796292) |
 
-Gas, fees and balances for every row are in runs E and G of [docs/testnet-findings.md](docs/testnet-findings.md). Before this template, a prototype of the contract ran the same mechanism: [0.0.10777783](https://hashscan.io/testnet/contract/0.0.10777783), run B.
+Gas, fees and balances for every row are in runs E, F and G of [docs/testnet-findings.md](docs/testnet-findings.md). Before this template, a prototype of the contract ran the same mechanism: [0.0.10777783](https://hashscan.io/testnet/contract/0.0.10777783), run B.
 
 ## Environment variables
 
-None is required: the app builds and runs without a `.env`.
+None is required: the app builds and runs without a `.env`. The Foundry variant uses no `.env` at all.
 
 | Variable | File | Purpose |
 | --- | --- | --- |
@@ -98,7 +111,7 @@ None is required: the app builds and runs without a `.env`.
 
 ## More
 
-[How it works](docs/how-it-works.md) (the contract, the Hedera services in a tick, the layout, known limitations) · [Costs](docs/costs.md) · [Checking a tick](docs/verify-ticks.md) · [Template checks and Hedera Harness](docs/checks.md) · [Everything measured on testnet](docs/testnet-findings.md) · [AGENTS.md](AGENTS.md), for changing the template with or without a coding agent.
+[How it works](docs/how-it-works.md) (the contract, the Hedera services in a tick, the layout, known limitations) · [Costs](docs/costs.md) · [Checking a tick](docs/verify-ticks.md) · [Template checks and Hedera Harness](docs/checks.md) · [Everything measured on testnet](docs/testnet-findings.md) · [The Foundry package](packages/foundry/README.md) · [AGENTS.md](AGENTS.md), for changing the template with or without a coding agent.
 
 ## License
 
