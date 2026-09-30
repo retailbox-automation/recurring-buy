@@ -79,7 +79,7 @@ Other limits worth knowing: a second with no capacity returns `SCHEDULE_EXPIRY_I
 2. **Read a tick by timestamp:** the schedule's `executed_timestamp`, then `/contracts/{contractId}/results/{timestamp}`. `/contracts/results/{transactionId}?nonce=N` can return the call that created the schedule instead (B7), and lists need `internal=true` to show scheduled calls at all (A9).
 3. **Do not trust `from` or the schedule's creator on the mirror node.** They name the hashio relay (B2, B6). Follow a plan through the contract's events.
 4. **The mirror node never marks a schedule as expired** (A7). `scheduleState` computes "missed" from the clock.
-5. **Fees through hashio come from `eth_gasPrice`** (C1): use `useHederaFees`. Fees derived from the block header are rejected.
+5. **Fees through hashio come from `eth_gasPrice`** (C1): use `useHederaFees`. Fees derived from the block header are rejected. Costs shown to a person use the price the network bills, from the mirror node's `/network/fees` (`useGasPrice`): `eth_gasPrice` adds the relay's margin (C4).
 6. **The app builds and boots with no `.env`.** `tools/gate/local-gate.sh` runs `next build` and `next start` in an empty environment and requests every core route. Fetch live data on the client and show an error state when a node or API is unreachable; do not fetch at build time.
 7. Core routes are listed in `.harness/validators/playwright-smoke.yaml`. Add a route there when you add a page that matters.
 8. When the contract's ABI changes, update `utils/recurring-buy/abi.ts` for whatever the app calls or reads.

@@ -4,8 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { PlanDetails } from "./PlanDetails";
 import { ExternalLink, Panel, formatHbar, formatPeriod, formatToken } from "./common";
-import { associateCalldata, hashioGasPrice, hederaIdToLongZeroAddress, minOut } from "@sh/saucerswap";
-import { useQuery } from "@tanstack/react-query";
+import { associateCalldata, hederaIdToLongZeroAddress, minOut } from "@sh/saucerswap";
 import { erc20Abi, formatUnits, getAddress, isAddress, parseEventLogs, parseUnits } from "viem";
 import {
   useAccount,
@@ -18,6 +17,7 @@ import {
 import {
   type RecurringBuyNetwork,
   defaultRoute,
+  useGasPrice,
   useHederaFees,
   useMirrorAccount,
   useOwnerPlans,
@@ -28,6 +28,7 @@ import {
 } from "~~/hooks/recurring-buy/useRecurringBuy";
 import { useTransactor } from "~~/hooks/scaffold-hbar";
 import { recurringBuyAbi } from "~~/utils/recurring-buy/abi";
+import { tickCost } from "~~/utils/recurring-buy/costs";
 import { type PlanParams, ticksRun } from "~~/utils/recurring-buy/plan";
 
 /**
@@ -35,8 +36,6 @@ import { type PlanParams, ticksRun } from "~~/utils/recurring-buy/plan";
  * on testnet (docs/testnet-findings.md, E4); the contract keeps RESCHEDULE_GAS of it back for the next schedule.
  */
 const TICK_GAS_LIMIT = 1_900_000n;
-/** Gas one tick used on testnet, for the estimate of what a tick costs. */
-const TICK_GAS_USED = 1_605_224n;
 /** JSON-RPC counts HBAR in weibar (18 decimals), the EVM and the contract in tinybar (8). */
 const WEIBAR_PER_TINYBAR = 10_000_000_000n;
 
@@ -198,12 +197,7 @@ const PlanBuilder = ({ network, contract }: { network: RecurringBuyNetwork; cont
   const reservePerTick = reserveGasPrice !== undefined ? tickGasLimit * reserveGasPrice : undefined;
   const deposit = reservePerTick !== undefined ? reservePerTick * ticks : undefined;
 
-  const { data: gasPriceTinybar } = useQuery({
-    queryKey: ["recurring-buy", "gas-price", chainId],
-    queryFn: async () => (await hashioGasPrice(publicClient!)) / WEIBAR_PER_TINYBAR,
-    enabled: Boolean(publicClient),
-    refetchInterval: 60_000,
-  });
+  const { data: gasPrice } = useGasPrice(network);
 
   const account = useMirrorAccount(
     network,
@@ -424,12 +418,11 @@ const PlanBuilder = ({ network, contract }: { network: RecurringBuyNetwork; cont
                   <>
                     <b>{formatHbar(reservePerTick)}</b> reserved from the deposit ({tickGasLimit.toLocaleString()} gas ×{" "}
                     {reserveGasPrice?.toString()} tinybar, the contract&apos;s reserve price).
-                    {gasPriceTinybar !== undefined && (
+                    {gasPrice && (
                       <>
                         {" "}
-                        A tick costs about {formatHbar(TICK_GAS_USED * gasPriceTinybar)} at today&apos;s gas price. The
-                        contract charges the plan what the tick used and puts the rest of the reservation back into the
-                        deposit.
+                        A tick costs about {formatHbar(tickCost(gasPrice))} at today&apos;s gas price. The contract
+                        charges the plan what the tick used and puts the rest of the reservation back into the deposit.
                       </>
                     )}
                   </>

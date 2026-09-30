@@ -13,7 +13,7 @@ import * as chains from "viem/chains";
 import { usePublicClient } from "wagmi";
 import { useTargetNetwork } from "~~/hooks/scaffold-hbar";
 import scaffoldConfig, { type ReferencePlan } from "~~/scaffold.config";
-import { type Mirror, createMirror, fetchTickCharge } from "~~/utils/recurring-buy/mirror";
+import { type Mirror, createMirror, fetchGasPrice, fetchTickCharge } from "~~/utils/recurring-buy/mirror";
 import { type PlanView, loadContractEvents, plansOwnedBy, resolvePlan } from "~~/utils/recurring-buy/plan";
 import { contracts } from "~~/utils/scaffold-hbar/contract";
 
@@ -195,6 +195,17 @@ export function useTokenInfo(network: RecurringBuyNetwork, token: string | undef
     },
     enabled: Boolean(mirror && token),
     staleTime: Infinity,
+  });
+}
+
+/** The gas price the network bills, for showing what a transaction or a tick costs. */
+export function useGasPrice(network: RecurringBuyNetwork) {
+  const { mirror, chainId } = network;
+  return useQuery({
+    queryKey: ["recurring-buy", "gas-price", chainId],
+    queryFn: () => fetchGasPrice(mirror!),
+    enabled: Boolean(mirror),
+    refetchInterval: 300_000,
   });
 }
 

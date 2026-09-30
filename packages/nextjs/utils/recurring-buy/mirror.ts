@@ -142,3 +142,20 @@ export async function fetchTickCharge(mirror: Mirror, contractId: string, timest
   const transaction = found?.transactions.find(t => t.consensus_timestamp === timestamp);
   return transaction ? paidBy(transaction, contractId) : null;
 }
+
+/** Tinybar per gas: `contractCall` for a scheduled tick, `ethereumTransaction` for what a wallet sends. */
+export type GasPrice = { contractCall: bigint; ethereumTransaction: bigint };
+
+/**
+ * The gas price the network bills, from the mirror node's /network/fees. The relay's `eth_gasPrice` is this price plus
+ * the relay operator's margin: hashio said 114 while the network charged 109 (docs/testnet-findings.md, E1).
+ */
+export async function fetchGasPrice(mirror: Mirror): Promise<GasPrice> {
+  const found = await mirror.get<{ fees: { gas: number; transaction_type: string }[] }>("/network/fees");
+  const price = (type: string) => {
+    const fee = found?.fees.find(entry => entry.transaction_type === type);
+    if (!fee) throw new Error(`mirror node /network/fees has no gas price for ${type}`);
+    return BigInt(fee.gas);
+  };
+  return { contractCall: price("ContractCall"), ethereumTransaction: price("EthereumTransaction") };
+}
