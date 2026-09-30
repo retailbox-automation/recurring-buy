@@ -61,7 +61,7 @@ Fund the address the first command prints before the second. The deploy writes `
 
 ## Start a plan: what you sign and what it costs
 
-On `/plans/new` you fill in the pair, the amount per buy, the period, the number of buys and the price floor. Before you sign anything, the page shows a live quote from SaucerSwap's QuoterV2 and every transaction with its gas. You sign up to five, each skipped when it is already done:
+On `/plans/new` you fill in the pair, the amount per buy, the period, the number of buys and the price floor. Before you sign anything, the page shows a live quote from SaucerSwap's QuoterV2 and every transaction with its gas. You sign up to five, the first four only when needed:
 
 | # | Transaction | Gas on testnet |
 | --- | --- | --- |

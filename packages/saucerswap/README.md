@@ -24,9 +24,8 @@ const { data, valueWeibar } = buildSwapFromHbarCalldata({
 // signs transactions — a wallet, or a Hedera scheduled ContractCall.
 ```
 
-From the Next.js app in this workspace: `import { ... } from "@sh/saucerswap"` after
-`yarn saucerswap:build` (or add `"@sh/saucerswap"` to `next.config.ts`'s
-`transpilePackages` to import the TypeScript source directly, no build step needed).
+The Next.js app in this workspace imports it as `@sh/saucerswap`. Its `dev`, `start`, `build`
+and `check-types` scripts compile this package first (`tsc -p ../saucerswap/tsconfig.json`).
 
 ## What's checked
 
@@ -38,9 +37,10 @@ saucerswap:test:live` additionally calls `quoteExactInput` and `eth_gasPrice`
 against the live Hedera testnet RPC (skipped by default, so the eligibility gate
 never depends on testnet being reachable).
 
-Every constant and gas figure traces to a live testnet run, recorded in the
-repository's [docs/testnet-findings.md](../../docs/testnet-findings.md) (run A:
-five scheduled swaps, S1-S5).
+Every testnet address and gas figure traces to the repository's
+[docs/testnet-findings.md](../../docs/testnet-findings.md): the swap figures to run A
+(S1 is an association, S2 to S5 are schedules), the WhbarHelper to D2 and G1. The
+mainnet addresses come from SaucerSwap's documentation.
 
 ## License
 

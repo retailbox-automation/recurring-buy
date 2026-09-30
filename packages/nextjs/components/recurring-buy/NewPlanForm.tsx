@@ -488,7 +488,8 @@ const PlanBuilder = ({ network, contract }: { network: RecurringBuyNetwork; cont
                   {gasPrice ? `About ${formatHbar(gasTotal * gasPrice.ethereumTransaction)} of gas in all` : "Gas"},
                   from what each transaction used on testnet
                   {gasPrice && `, at the network's price now of ${gasPrice.ethereumTransaction} tinybar per gas`}. Your
-                  wallet may show a higher maximum fee: the relay adds a margin to the price.
+                  wallet shows a higher maximum fee: each gas limit is the estimate plus 20%, at the relay&apos;s price,
+                  which includes its margin. The network bills the gas used.
                 </p>
               </dd>
               <dt className="text-base-content/60">Gas per tick</dt>

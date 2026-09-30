@@ -16,7 +16,10 @@ export const MEASURED_GAS = {
   tick: 1_605_224n,
 } as const;
 
-/** Tinybar a tick costs at `price`: a scheduled tick is billed as a contract call (E2). */
+/**
+ * Tinybar a tick costs at `price`. A tick is a scheduled contract call, so it takes the `ContractCall` price; on testnet
+ * that was 109 tinybar per gas, the same as for `EthereumTransaction` (C4), and every tick was billed at it (E2).
+ */
 export const tickCost = (price: GasPrice) => MEASURED_GAS.tick * price.contractCall;
 
 /** The gas limit to send with a transaction: its estimate plus 20%. Hedera bills the gas used, not the limit (E1). */

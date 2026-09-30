@@ -108,7 +108,7 @@ describe("stepsToSign", () => {
   it("asks an owner that associates tokens automatically to associate the token it buys", async () => {
     // 0.0.10012993 has unlimited automatic associations. It took WHBAR by automatic association, but its SAUCE
     // relationship is empty, and as the owner of a plan it received no SAUCE: the pool's transfer inside the tick ran
-    // out of gas and the tick was skipped (hashscan.io/testnet/transaction/1790794091.124190452; D3).
+    // out of gas and the tick was skipped (run F, tick 1790794091.124190452; docs/testnet-findings.md, F2).
     const OWNER = "0xa734fed00c784f223a46983742a18304c7027546";
     const { mirror } = fixtureMirror({
       [`/accounts/${OWNER}?transactions=false`]: owner,

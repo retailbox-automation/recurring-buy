@@ -1,4 +1,4 @@
-/** Three testnet swaps used 200,042 to 200,942 gas (docs/testnet-findings.md, S2 and S5). */
+/** Two scheduled swaps on testnet used 200,054 and 200,042 gas (docs/testnet-findings.md, A3: S2 and S5). */
 export const SWAP_GAS_LIMIT_FLOOR = 220_000n;
 
 /**

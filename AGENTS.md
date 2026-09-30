@@ -21,9 +21,9 @@ Use the one the project was created with (`packageManager` in the root `package.
 ```bash
 yarn next:dev                    # the app, http://localhost:3000; needs no wallet and no .env
 yarn hardhat:test                # contract tests, on mocks
-yarn next:test                   # plan history and mirror node code, on recorded testnet responses
+yarn next:test                   # plan history, mirror node and cost code, on recorded testnet responses
 yarn saucerswap:test             # SaucerSwap client; saucerswap:test:live also calls testnet
-yarn lint                        # all three packages; the gate adds --max-warnings=0
+yarn lint                        # every package; the gate adds --max-warnings=0
 yarn next:check-types
 yarn hardhat:check-types
 yarn hardhat:compile
@@ -63,7 +63,7 @@ yarn foundry:deploy:testnet      # forge script, then writes deployedContracts.t
 | WHBAR token | `0.0.15058` | `0.0.1456986` |
 | SaucerSwap WhbarHelper (wraps HBAR) | `0.0.5286055` | `0.0.5808826` |
 
-They are defined once, in `packages/saucerswap/src/addresses.ts`; the deploy script repeats the two router addresses. The testnet ones have carried our transactions. The mainnet ones are from SaucerSwap's documentation and have not been exercised. An HTS token's or contract's EVM address is its id as a 20-byte number: `hederaIdToLongZeroAddress("0.0.15058")`.
+They are defined once, in `packages/saucerswap/src/addresses.ts`; the deploy script repeats the two router addresses. The testnet ones have carried our transactions, except QuoterV2, which is only read with `eth_call`. The mainnet ones are from SaucerSwap's documentation and have not been exercised. An HTS token's or contract's EVM address is its id as a 20-byte number: `hederaIdToLongZeroAddress("0.0.15058")`.
 
 ## Invariants of the contract
 
@@ -96,7 +96,7 @@ Other limits worth knowing: a second with no capacity returns `SCHEDULE_EXPIRY_I
 ## Extending it
 
 - **Another pair or fee tier:** nothing to change in the contract. A plan names `tokenIn`, `fee` and `tokenOut`; the form accepts any HTS token id. On testnet only the WHBAR/SAUCE pool at fee 3000 is known to exist (docs/testnet-findings.md).
-- **A multi-hop path:** `buy` builds the path with `abi.encodePacked(tokenIn, fee, tokenOut)`. Store a `bytes path` in the plan instead, and raise the gas estimates in `NewPlanForm.tsx`.
+- **A multi-hop path:** `buy` builds the path with `abi.encodePacked(tokenIn, fee, tokenOut)`. Store a `bytes path` in the plan instead, raise `TICK_GAS_LIMIT` in `NewPlanForm.tsx`, and update `MEASURED_GAS.tick` in `utils/recurring-buy/costs.ts`, which prices a tick.
 - **A different action per tick** (rebalance, claim, pay): replace the body of `buy`. Keep it a self-call that reverts on failure, keep `tick` free of anything that can fail, and keep `_chargeTick` last.
 - **Spending HBAR directly:** a tick has no HBAR of the owner's to spend; the owner must hold WHBAR. `/plans/new` wraps HBAR into WHBAR through SaucerSwap's WhbarHelper (`buildWrapHbar` in `@sh/saucerswap`). Wrapping inside the contract would mean the contract holds the owner's funds between ticks, which this design avoids.
 

@@ -4,7 +4,7 @@ Two throwaway prototypes ran on Hedera testnet before this template was written,
 
 The template's `RecurringBuy` is a rewrite of the contract from run B. It has more in it (many plans in one contract, a failed swap caught instead of reverting the tick, per-plan gas accounting), so its gas figures differ somewhat. Run E is the template's own contract on testnet.
 
-Both runs used the hashio JSON-RPC relay `https://testnet.hashio.io/api` (chain id 296) and the mirror node `https://testnet.mirrornode.hedera.com/api/v1`. The gas price was 109 tinybar per gas in both.
+Every run used the hashio JSON-RPC relay `https://testnet.hashio.io/api` (chain id 296) and the mirror node `https://testnet.mirrornode.hedera.com/api/v1`. The network's gas price was 109 tinybar per gas throughout.
 
 SaucerSwap V2 on testnet, checked against SaucerSwap's contract list and by calling them:
 
@@ -14,6 +14,7 @@ SaucerSwap V2 on testnet, checked against SaucerSwap's contract list and by call
 | QuoterV2 | `0.0.1390002` | `0x00000000000000000000000000000000001535b2` |
 | WHBAR token | `0.0.15058` | `0x0000000000000000000000000000000000003ad2` |
 | WHBAR contract (`deposit()` wraps HBAR) | `0.0.15057` | |
+| WhbarHelper (`deposit()` wraps HBAR through the WHBAR contract) | `0.0.5286055` | `0x000000000000000000000000000000000050a8a7` |
 | SAUCE token, 6 decimals | `0.0.1183558` | `0x0000000000000000000000000000000000120f46` |
 
 The WHBAR/SAUCE pool exists only at fee 3000 (0.3%). `getPool` returned the zero address for 500, 1500 and 10000.

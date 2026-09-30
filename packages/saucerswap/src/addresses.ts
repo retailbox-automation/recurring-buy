@@ -22,7 +22,7 @@ export const TESTNET_ADDRESSES: SaucerSwapAddresses = {
   whbarHelper: "0x000000000000000000000000000000000050a8a7", // WhbarHelper 0.0.5286055
 };
 
-/** From the same list, checked 2026-09-24; not exercised by us. */
+/** From the same list; not exercised by us. */
 export const MAINNET_ADDRESSES: SaucerSwapAddresses = {
   whbar: "0x0000000000000000000000000000000000163b5a", // WHBAR token 0.0.1456986
   router: "0x00000000000000000000000000000000003c437a", // SwapRouter 0.0.3949434

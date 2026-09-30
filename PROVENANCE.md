@@ -41,7 +41,8 @@ Added:
 - `packages/hardhat/contracts/RecurringBuy.sol`, the interfaces and mocks next to it, `test/RecurringBuy.test.ts` and `deploy/00_deploy_recurring_buy.ts`.
 - `packages/foundry/`: the Foundry variant. `contracts/` is a copy of `packages/hardhat/contracts`; `test/RecurringBuy.t.sol`, `script/DeployRecurringBuy.s.sol` and `scripts-js/generateTsAbis.mjs` are new. The package's layout follows the starter's Foundry package (`buidler-labs/scaffold-hbar`, `templates/blank-template`), which was not part of our Hardhat scaffold. `lib/` holds git submodules, not copies: forge-std (MIT or Apache-2.0) and OpenZeppelin Contracts (MIT), at the tags in `foundry.lock`.
 - `packages/nextjs`: routes `/plans/new` and `/plans`, `components/recurring-buy/`, `hooks/recurring-buy/` and `utils/recurring-buy/` with its tests and mirror node fixtures.
-- `docs/testnet-findings.md`: what our two prototype runs measured on Hedera testnet on 2026-09-24 and 2026-09-29. The prototypes themselves are not in this repository; `RecurringBuy.sol` was written anew from what they showed.
+- `docs/testnet-findings.md`: what was measured on Hedera testnet: our two prototype runs (A and B, 2026-09-24 and 2026-09-29), then read-only simulations (D) and runs of the template's own contract (E), its Foundry variant (F) and its wrap step (G) on 2026-09-30. The prototypes themselves are not in this repository; `RecurringBuy.sol` was written anew from what they showed.
+- `docs/costs.md`, `docs/how-it-works.md`, `docs/verify-ticks.md` and `docs/checks.md`: what a plan costs, how the template works and its known limitations, how to check a tick, and the template's checks.
 
 Third-party code inside our files:
 
