@@ -96,6 +96,12 @@ Findings:
 
 Not tested in run B: a second `scheduleCall` in one scheduled execution (response code 373, `NO_SCHEDULING_ALLOWED_AFTER_SCHEDULED_RECURSION`), `try`/`catch` around the swap in a live tick, `deleteSchedule`, `hasScheduleCapacity` returning false, periods longer than 90 s, plans longer than two ticks, a browser wallet, mainnet.
 
+## Simulations (2026-09-30)
+
+Read-only calls to the mirror node's `/api/v1/contracts/call`, which runs a call against current testnet state without sending a transaction.
+
+- **D1.** An HTS token with a finite supply refuses an allowance above its maximum supply. `approve(SwapRouter, 2^63 - 1)` on SAUCE (supply type `FINITE`, maximum supply 1,000,000,000,000,000 in its smallest unit), sent from an account associated with SAUCE, reverted with `AMOUNT_EXCEEDS_TOKEN_MAX_SUPPLY`. The same call for exactly the maximum supply returned true, and for the maximum supply plus one it reverted again. On WHBAR (supply type `INFINITE`) the call with `2^63 - 1` returned true. `RecurringBuy` approves the router for `2^63 - 1` on a plan's spend token, so a plan that spends a finite-supply token cannot start yet.
+
 ## Relay and tooling
 
 - **C1.** hashio's block header reports a `baseFeePerGas` of 109, far below the gas price the relay accepts. A client that derives its fees from the header sends a price the relay rejects with "Gas price … is below configured minimum". Read `eth_gasPrice` and send that.

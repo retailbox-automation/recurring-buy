@@ -33,7 +33,7 @@ import { type PlanParams, ticksRun } from "~~/utils/recurring-buy/plan";
 /**
  * Gas limit of every tick. A tick that pulled, swapped and scheduled the next one used 1,622,904 gas in the prototype
  * on testnet (docs/testnet-findings.md, B5); the contract keeps RESCHEDULE_GAS of it back for the next schedule.
- * TODO(deploy): set both constants from a tick of this template's own contract.
+ * TODO(deploy): set both constants, and the start costs quoted under "Start" in step 2, from this template's own contract.
  */
 const TICK_GAS_LIMIT = 1_900_000n;
 /** Gas one tick used on testnet, for the estimate of what a tick costs. */

@@ -87,6 +87,7 @@ Other limits worth knowing: a second with no capacity returns `SCHEDULE_EXPIRY_I
 
 - **Another pair or fee tier:** nothing to change in the contract. A plan names `tokenIn`, `fee` and `tokenOut`; the form accepts any HTS token id. On testnet only the WHBAR/SAUCE pool at fee 3000 is known to exist (docs/testnet-findings.md).
 - **A multi-hop path:** `buy` builds the path with `abi.encodePacked(tokenIn, fee, tokenOut)`. Store a `bytes path` in the plan instead, and raise the gas estimates in `NewPlanForm.tsx`.
+- **Spending a finite-supply token:** `_prepareToken` approves the router for `2^63 - 1`, which such a token refuses (docs/testnet-findings.md, D1). Approve its maximum supply instead, read from the Token Service's token info, and test both kinds of token.
 - **A different action per tick** (rebalance, claim, pay): replace the body of `buy`. Keep it a self-call that reverts on failure, keep `tick` free of anything that can fail, and keep `_chargeTick` last.
 - **Spending HBAR directly:** a tick has no HBAR of the owner's to spend; the owner must hold WHBAR. Wrapping inside the contract would mean the contract holds the owner's funds between ticks, which this design avoids.
 
