@@ -103,7 +103,7 @@ else
   RUN_SEP=(--)
 fi
 
-echo "gate: $OWNER/$REPO#$REF · package manager $PM · create-scaffold-hbar@$CLI_VERSION · node $(node -v) · npm $(npm -v)"
+echo "gate: $([[ $LOCAL -eq 1 ]] && echo "last local commit" || echo "$OWNER/$REPO#$REF") · package manager $PM · create-scaffold-hbar@$CLI_VERSION · node $(node -v) · npm $(npm -v)"
 
 # ---- source: the repository as GitHub serves it, or with --local the last local commit -------------
 t0=$SECONDS
@@ -175,7 +175,7 @@ fi
 
 # Must-differ control for G2: without -s the CLI picks the framework from our manifest;
 # if it could not read the manifest it would fall back to Foundry.
-if [[ $SCAFFOLD_OK -eq 1 && "$PRIVATE" == "false" && -n "$DEFAULT_FW" ]]; then
+if [[ $SCAFFOLD_OK -eq 1 && $LOCAL -eq 0 && "$PRIVATE" == "false" && -n "$DEFAULT_FW" ]]; then
   if [[ -d "$APP/packages/$DEFAULT_FW" ]]; then
     G2_NOTE="$G2_NOTE manifest applied by the CLI (packages/$DEFAULT_FW present)"
   else
