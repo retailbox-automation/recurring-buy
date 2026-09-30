@@ -1,0 +1,16 @@
+{
+  "name": "@sh/foundry",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "account": "cast wallet address --account recurring-buy-deployer",
+    "account:generate": "mkdir -p \"$HOME/.foundry/keystores\" && cast wallet new \"$HOME/.foundry/keystores\" recurring-buy-deployer",
+    "account:import": "cast wallet import recurring-buy-deployer --interactive",
+    "clean": "forge clean",
+    "compile": "forge build",
+    "deploy:testnet": "forge script script/DeployRecurringBuy.s.sol --rpc-url hedera_testnet --account recurring-buy-deployer --broadcast --legacy && node scripts-js/generateTsAbis.mjs",
+    "format": "forge fmt",
+    "lint": "forge fmt --check",
+    "test": "forge test"
+  }
+}

@@ -1,0 +1,6 @@
+# forge build output
+cache/
+out/
+
+# forge script logs of each deployment (addresses, transactions); scripts-js/generateTsAbis.mjs reads them
+broadcast/
