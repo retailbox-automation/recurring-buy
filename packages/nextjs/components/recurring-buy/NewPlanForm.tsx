@@ -544,6 +544,20 @@ const PlanBuilder = ({ network, contract }: { network: RecurringBuyNetwork; cont
           <p className="m-0">
             This address has no Hedera account yet. Send it some HBAR (for example from the faucet) to create one.
           </p>
+        ) : account.data === undefined ? (
+          account.isError ? (
+            <div className="flex flex-col gap-3">
+              <p className="m-0 text-error">
+                Could not read your account from the mirror node, so which of these transactions you still need is
+                unknown: {account.error.message}
+              </p>
+              <button className="btn btn-sm btn-outline self-start" onClick={() => account.refetch()}>
+                Try again
+              </button>
+            </div>
+          ) : (
+            <p className="m-0 text-base-content/60">Reading your account from the mirror node…</p>
+          )
         ) : (
           <ol className="flex flex-col gap-5 m-0 p-0 list-none">
             <Step n={1} title={`Receive ${outSymbol}`} state={outAssociated ? "done" : "todo"}>
