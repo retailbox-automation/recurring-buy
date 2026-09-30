@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
 import { MoonIcon, SunIcon } from "@heroicons/react/24/outline";
 
-export const SwitchTheme = ({ className }: { className?: string }) => {
+export const SwitchTheme = () => {
   const { setTheme, resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
@@ -25,7 +25,7 @@ export const SwitchTheme = ({ className }: { className?: string }) => {
   if (!mounted) return null;
 
   return (
-    <div className={`flex space-x-2 h-8 items-center justify-center text-sm ${className}`}>
+    <div className="flex space-x-2 h-8 items-center justify-center text-sm">
       <input
         id="theme-toggle"
         type="checkbox"
