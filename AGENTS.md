@@ -9,7 +9,7 @@ A scaffold-hbar template for recurring buys on SaucerSwap V2. One contract, `Rec
 - `packages/hardhat`: `RecurringBuy.sol`, mocks, tests, deploy script (Hardhat, hardhat-deploy). Hardhat only; there is no Foundry package.
 - `packages/nextjs`: the app (Next.js App Router, RainbowKit, wagmi, viem, DaisyUI).
 - `packages/saucerswap`: `@sh/saucerswap`, a SaucerSwap V2 client with no React in it. See its README.
-- `docs/testnet-findings.md`: what two prototype runs and this contract (run E) measured on testnet. Code comments cite it by label (`A3`, `B7`).
+- `docs/testnet-findings.md`: what two prototype runs, this contract (run E) and its wrap step (run G) measured on testnet. Code comments cite it by label (`A3`, `B7`). Next to it: `costs.md`, `how-it-works.md` (with the known limitations), `verify-ticks.md` and `checks.md`, which hold what the README leaves out.
 
 ## Package manager
 
