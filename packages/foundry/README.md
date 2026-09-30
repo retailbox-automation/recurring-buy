@@ -36,7 +36,20 @@ The Schedule Service exists only on Hedera, so the tests put `MockScheduleServic
 
 The script deploys `RecurringBuy` with two constructor arguments: SaucerSwap's V2 SwapRouter for the network, and the reserve gas price, which is twice the gas price the relay reports (`eth_gasPrice`, converted from weibar to tinybar). The transaction is a legacy one (`--legacy`), priced at the relay's `eth_gasPrice`. On a chain other than Hedera testnet (296) or mainnet (295) the script stops, because a local chain has no Schedule Service.
 
+On testnet on 2026-09-30 this deployed [0.0.10796292](https://hashscan.io/testnet/contract/0.0.10796292) with 2,134,668 gas, 2.33 HBAR (run F in [docs/testnet-findings.md](../../docs/testnet-findings.md)).
+
 For mainnet, run the same `forge script` command from `packages/foundry` with `--rpc-url hedera_mainnet`, then `node scripts-js/generateTsAbis.mjs`. The mainnet router address comes from SaucerSwap's documentation and has not been exercised by us.
+
+## Verify the source
+
+Sourcify, which Hashscan reads, verifies the contract with forge's own command. Run it from `packages/foundry`, with the address and the reserve gas price the deploy printed:
+
+```bash
+forge verify-contract <address> contracts/RecurringBuy.sol:RecurringBuy --chain-id 296 --verifier sourcify \
+  --constructor-args $(cast abi-encode "constructor(address,uint256)" 0x0000000000000000000000000000000000159398 <reserve gas price>)
+```
+
+It gave an exact match for the contract above.
 
 ## Format and lint
 

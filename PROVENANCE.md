@@ -20,13 +20,13 @@ Every commit after `90148ef` (`git log 90148ef..`), all made inside the bounty b
 Changed in starter files:
 
 - `LICENCE` renamed to `LICENSE`, with our copyright line added below the upstream ones.
-- `.gitmodules` removed: it listed Foundry submodules, and this template is Hardhat-only.
+- `.gitmodules`: the starter listed four Foundry submodules; it now lists the two the Foundry variant pins, `forge-std` and `openzeppelin-contracts`.
 - `.gitignore`: env files and Hedera Harness runtime directories.
 - `README.md`, `AGENTS.md`, `CLAUDE.md` and `packages/hardhat/README.md` rewritten.
 - The starter's sample contracts removed with their deploy scripts and tests: `HederaToken.sol`, `HtsTokenCreator.sol`, `interfaces/IHederaTokenService.sol`. `packages/nextjs/contracts/deployedContracts.ts` no longer lists their testnet deployments.
 - `packages/hardhat/scripts/generateTsAbis.ts`: a deploy that deploys nothing (any network without the Hedera Schedule Service) ends cleanly instead of throwing.
 - `packages/nextjs`: the home page replaced; `Header.tsx` names the app and links its pages; `Footer.tsx` keeps the price, faucet and theme controls in the page flow instead of fixed over the content; `scaffold.config.ts` gains `referencePlan`; the burner wallet exists only in a build made with `NEXT_PUBLIC_ENABLE_BURNER_WALLET=true`.
-- Root `package.json`: `gate:*`, `harness:run` and `hardhat:deploy:testnet` scripts; `hedera-harness` and `zod` dev dependencies; a third workspace package and its `saucerswap:*` scripts (see Added).
+- Root `package.json`: `gate:*`, `harness:run`, `hardhat:deploy:testnet` and `foundry:*` scripts; `hedera-harness` and `zod` dev dependencies; a third workspace package and its `saucerswap:*` scripts (see Added).
 - `packages/nextjs/next.config.ts`: the optional `@x402/*` imports of `@coinbase/cdp-sdk` resolve to empty modules, so npm scaffolds build (the upstream blank starter fails `next build` on npm).
 
 Added:
@@ -38,6 +38,7 @@ Added:
 - `.harness/` (Hedera Harness v3 recipe and validators).
 - `packages/saucerswap/` (`@sh/saucerswap`): a SaucerSwap V2 client with no React in it: addresses, quotes, swap paths and calldata, HTS association, relay gas price. The app uses it for the quote, the price floor and the fees.
 - `packages/hardhat/contracts/RecurringBuy.sol`, the interfaces and mocks next to it, `test/RecurringBuy.test.ts` and `deploy/00_deploy_recurring_buy.ts`.
+- `packages/foundry/`: the Foundry variant. `contracts/` is a copy of `packages/hardhat/contracts`; `test/RecurringBuy.t.sol`, `script/DeployRecurringBuy.s.sol` and `scripts-js/generateTsAbis.mjs` are new. The package's layout follows the starter's Foundry package (`buidler-labs/scaffold-hbar`, `templates/blank-template`), which was not part of our Hardhat scaffold. `lib/` holds git submodules, not copies: forge-std (MIT or Apache-2.0) and OpenZeppelin Contracts (MIT), at the tags in `foundry.lock`.
 - `packages/nextjs`: routes `/plans/new` and `/plans`, `components/recurring-buy/`, `hooks/recurring-buy/` and `utils/recurring-buy/` with its tests and mirror node fixtures.
 - `docs/testnet-findings.md`: what our two prototype runs measured on Hedera testnet on 2026-09-24 and 2026-09-29. The prototypes themselves are not in this repository; `RecurringBuy.sol` was written anew from what they showed.
 

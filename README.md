@@ -2,7 +2,7 @@
 
 Buy a token on SaucerSwap on a schedule: the same amount every hour, day or week. Hedera runs every purchase itself, and your tokens stay in your wallet until the moment each one is spent.
 
-This is a [scaffold-hbar](https://docs.hedera.com/solutions/tools/scaffold-hbar/index) template: a Solidity contract, its tests, and a Next.js app in one workspace, for Hedera testnet and mainnet.
+This is a [scaffold-hbar](https://docs.hedera.com/solutions/tools/scaffold-hbar/index) template: a Solidity contract, its tests, and a Next.js app in one workspace, for Hedera testnet and mainnet. The contract comes with Hardhat or with Foundry, as you choose.
 
 ## What it does
 
@@ -31,11 +31,14 @@ The same command through `npm create` needs `--` before the CLI's flags: `npm cr
 
 Add `--package-manager npm` for an npm-based project. The examples below use Yarn; in an npm-based project the same scripts run as `npm run <script>`.
 
+The CLI asks for the Solidity framework: Hardhat, the default, or Foundry. `-s hardhat` or `-s foundry` answers without the prompt. Both variants have the same contract, tests of the same behaviour and the same app. The examples below use Hardhat; with Foundry, each `hardhat:` script has a `foundry:` twin, such as `yarn foundry:test` and `yarn foundry:deploy:testnet`.
+
 ## Prerequisites
 
 - Node.js 20.18.3 or later
 - Git with `user.name` and `user.email` set (the CLI makes the first commit)
 - Yarn (`corepack enable` installs it), or npm, for npm-based projects
+- For the Foundry variant: Foundry 1.7.1 (`foundryup -v v1.7.1`). With forge 1.8 and later, `forge script` fails against Hedera's JSON-RPC relay ([hiero-json-rpc-relay#5826](https://github.com/hiero-ledger/hiero-json-rpc-relay/issues/5826))
 - To deploy or to start a plan: a Hedera testnet account with HBAR from the [portal faucet](https://portal.hedera.com/faucet), and an EVM wallet set to Hedera Testnet (chain id 296)
 
 ## Look at it first: no wallet, no `.env`
@@ -57,7 +60,16 @@ Fund the deployer's address from the faucet between the two commands. The deploy
 
 Deploying this contract used 2,176,533 gas, 2.37 HBAR, on testnet on 2026-09-30. To show its source on Hashscan, verify it with Sourcify's v2 API: the request is in [packages/hardhat/README.md](packages/hardhat/README.md#verify-the-source) (`yarn hardhat:verify:testnet` calls the v1 API, which answered 404 when we tried it).
 
-`RecurringBuy` needs the Schedule Service, so there is nothing to deploy on a local chain. The contract's tests run against mocks: `yarn hardhat:test`.
+With Foundry the key goes into an encrypted keystore in `~/.foundry/keystores`, outside the project:
+
+```bash
+yarn foundry:account:generate   # a deployer keystore; prints the address to fund
+yarn foundry:deploy:testnet     # asks for the keystore password
+```
+
+The Foundry script passes the same two arguments and writes `deployedContracts.ts` the same way; [packages/foundry/README.md](packages/foundry/README.md) has the details and the command that verifies the source on Sourcify.
+
+`RecurringBuy` needs the Schedule Service, so there is nothing to deploy on a local chain. The contract's tests run against mocks: `yarn hardhat:test` or `yarn foundry:test`.
 
 ## Start a plan: what you sign and what it costs
 
@@ -117,7 +129,7 @@ The mechanism itself has run on testnet in a prototype of this contract, [0.0.10
 
 ## Environment variables
 
-None is required: the app builds and runs without a `.env`.
+None is required: the app builds and runs without a `.env`. The Foundry variant uses no `.env` at all.
 
 | Variable | File | Purpose |
 | --- | --- | --- |
@@ -131,6 +143,7 @@ None is required: the app builds and runs without a `.env`.
 
 ```
 packages/hardhat     RecurringBuy.sol, its mocks and tests, the deploy script
+packages/foundry     the same contracts/, tests in Solidity, a forge deploy script
 packages/nextjs      the app: /, /plans/new, /plans, plus the starter's Debug Contracts and block explorer
 packages/saucerswap  @sh/saucerswap: SaucerSwap V2 addresses, quotes, swap paths, HTS association, relay gas price
 docs                 what was measured on testnet
@@ -159,18 +172,20 @@ Three Hedera services meet in one tick: the Schedule Service starts it (HIP-1215
 | Command | What it checks |
 | --- | --- |
 | `yarn hardhat:test` | the contract, on mocks of the Schedule Service, the Token Service, an HTS token and the router |
+| `yarn foundry:test` | the same, in Solidity |
 | `yarn next:test` | the app's plan history and mirror node code, on recorded testnet responses |
 | `yarn saucerswap:test` | the SaucerSwap client |
-| `yarn lint` | all three packages |
+| `yarn lint` | every package |
 | `yarn gate:test` | the gate tools themselves: each check passes on good input and fails on broken input |
 | `yarn gate:manifest` | `template.json` against the schema of create-scaffold-hbar, and against the packages in this repository |
+| `yarn gate:contracts` | `packages/hardhat/contracts` and `packages/foundry/contracts` are the same, byte for byte |
 | `yarn gate:secrets` | secrets and `.env` files in the working tree and the whole git history |
-| `yarn gate:local` | the full gate on the last local commit, before it is pushed (Yarn leg) |
+| `yarn gate:local` | the full gate on the last local commit, before it is pushed: Yarn, Hardhat, then Yarn, Foundry |
 | `bash tools/gate/local-gate.sh <owner/repo[#ref]> <package-manager> [--strict]` | the full gate on a fresh scaffold from GitHub |
 
-`local-gate.sh` scaffolds the template with create-scaffold-hbar into a temporary directory (with `--local` the CLI copies the last commit instead of downloading it), then runs install, lint with zero warnings, type checks, contract compile and `next build` with an empty environment. It starts the built app without a `.env` and requests every route listed in `.harness/validators/playwright-smoke.yaml`. It also scans the scaffold and the repository history for secrets and checks the MIT licence. Until this README carries a testnet transaction link the testnet item shows `PENDING`; `--strict` turns that into a failure.
+`local-gate.sh` scaffolds the template with create-scaffold-hbar into a temporary directory (with `--local` the CLI copies the last commit instead of downloading it), then runs install, lint with zero warnings, type checks, contract compile, `next build`, and the contract and app tests with an empty environment. It scaffolds the manifest's default framework, Hardhat; `GATE_FRAMEWORK=foundry` scaffolds the Foundry variant. It starts the built app without a `.env` and requests every route listed in `.harness/validators/playwright-smoke.yaml`. It also scans the scaffold and the repository history for secrets and checks the MIT licence. Until this README carries a testnet transaction link the testnet item shows `PENDING`; `--strict` turns that into a failure.
 
-`.github/workflows/gate.yml` runs the same gate on Node 20.18.3, 22 and 24, for Yarn, npm@10 and npm@12. It runs only in a repository that has `template.json`. The CLI deletes that file from the projects it creates, so there the workflow stays idle, and `tools/gate/` and `gate.yml` can be deleted.
+`.github/workflows/gate.yml` runs the same gate on Node 20.18.3, 22 and 24, for Yarn, npm@10 and npm@12, and the Foundry variant on Node 22 for Yarn and npm. It runs only in a repository that has `template.json`. The CLI deletes that file from the projects it creates, so there the workflow stays idle, and `tools/gate/` and `gate.yml` can be deleted.
 
 ### Hedera Harness
 

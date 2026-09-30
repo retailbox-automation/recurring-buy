@@ -121,3 +121,27 @@ Findings:
 - **C1.** hashio's block header reports a `baseFeePerGas` of 109, far below the gas price the relay accepts. A client that derives its fees from the header sends a price the relay rejects with "Gas price … is below configured minimum". Read `eth_gasPrice` and send that.
 - **C2.** Source verification with hardhat-verify 2.1.3 failed on 2026-09-24: it calls Sourcify's v1 API, which answered 404. Sourcify's v2 API (`POST /server/v2/verify/296/<address>` with the standard JSON input) verified the contract. On 2026-09-30 the same call verified this template's contract (run E), with the standard JSON input from `deployments/hederaTestnet/solcInputs/`, compiler `0.8.28+commit.7893614a`, contract `contracts/RecurringBuy.sol:RecurringBuy` and the deploy transaction's hash; the job finished in 5 s.
 - **C3.** A contract deployed through the relay gets itself as its admin key. Hashscan shows an admin key on a contract that nobody administers.
+
+## Run F: the Foundry variant (2026-09-30)
+
+`RecurringBuy` from `packages/foundry`, deployed with `yarn foundry:deploy:testnet` (forge 1.7.1, `forge script` through hashio) by the account [`0.0.10012993`](https://hashscan.io/testnet/account/0.0.10012993). The plan was started and withdrawn with `cast send`.
+
+| Step | Result |
+| --- | --- |
+| Deploy [0.0.10796292](https://hashscan.io/testnet/contract/0.0.10796292) (`0x40101C1F6b21f851670A32C81d0c7AC363D38B21`) | [1790793914.431912104](https://hashscan.io/testnet/transaction/1790793914.431912104): SUCCESS. A legacy transaction with gas limit 2,775,068 (forge's estimate); 2,134,668 gas used, 2.3268 HBAR. Constructor arguments: router `0.0.1414040`, reserve gas price 228 tinybar, which the script computed from hashio's `eth_gasPrice` (114 tinybar) read with `vm.rpc` |
+| Source verification with `forge verify-contract --verifier sourcify` | exact runtime match: [sourcify.dev/server/v2/contract/296/0x40101C1F6b21f851670A32C81d0c7AC363D38B21](https://sourcify.dev/server/v2/contract/296/0x40101C1F6b21f851670A32C81d0c7AC363D38B21) (match 54438186) |
+| Wrap 0.05 HBAR: `deposit()` on `0.0.15057` | [1790794004.034699992](https://hashscan.io/testnet/transaction/1790794004.034699992): 771,256 gas, 0.8407 HBAR. WHBAR took an automatic association |
+| Approve the contract for 0.05 WHBAR | [1790794014.743271104](https://hashscan.io/testnet/transaction/1790794014.743271104): 727,020 gas, 0.7925 HBAR |
+| Plan 1: 0.05 WHBAR → SAUCE, one buy, period 60 s, floor 1.942368 SAUCE (95% of the quote of 2.044598), tick gas limit 1,900,000, deposit 4.332 HBAR | [`start`](https://hashscan.io/testnet/transaction/1790794031.903650505): SUCCESS, 3,093,330 gas, 3.3717 HBAR (the first plan on WHBAR). Tick 1: schedule [0.0.10796315](https://hashscan.io/testnet/schedule/0.0.10796315), payer the contract |
+| Tick 1, the last | [1790794091.124190452](https://hashscan.io/testnet/transaction/1790794091.124190452): SUCCESS with `TickSkipped`, then `PlanStopped(Completed)`. The swap reverted with SaucerSwap's `TransferFail(21)` and nothing was taken (F2). 323,164 gas, 0.3522 HBAR, paid by the contract; `TickCharged` 343,395 gas at 109 |
+| Withdraw: `stop` with the gas limit `cast` took from `eth_estimateGas`, 43,125 | [1790794204.601164416](https://hashscan.io/testnet/transaction/1790794204.601164416): `INSUFFICIENT_GAS`, 0.0470 HBAR |
+| Withdraw again with a gas limit of 100,000 | [1790794232.144956459](https://hashscan.io/testnet/transaction/1790794232.144956459): SUCCESS, `GasRefunded` 3.95769945 HBAR. 35,937 gas, 0.0392 HBAR |
+
+The account's balance went from 669.99721211 to 662.15509532 HBAR: 7.84211679 HBAR, of which 0.05 is the WHBAR it still holds.
+
+Findings:
+
+- **F1.** forge 1.7.1 deploys through hashio with `forge script --legacy`, at `eth_gasPrice`. The network charged the gas used at 109 tinybar (232,678,812 tinybar = 2,134,668 × 109), as for the Hardhat deployment (E1).
+- **F2.** A buy fails when the owner is not yet associated with the token bought and counts on automatic association, even with unlimited automatic associations (`max_automatic_token_associations = -1`, as for this account). The tick's call trace on the mirror node (`/contracts/results/<hash>/actions`) shows the pool's `transferToken` of SAUCE to the owner, at the Token Service, using all 173,036 gas it was given and failing with `INSUFFICIENT_GAS`; the pool then reverted with `TransferFail(21)`. In run E the same call to an owner associated with SAUCE used 15,284 of 172,836 gas. The association costs more gas than a buy's share of the tick (the tick gas limit minus `RESCHEDULE_GAS`), so every tick of such a plan is skipped: the owner has to associate (`associate()`, HIP-719) before the first tick. Not tested: the same plan after an explicit association, and a larger tick gas limit.
+- **F3.** `cast send` sets the gas limit to `eth_estimateGas`. For `stop` with a refund that was 43,125, and the call ran out of gas; with a limit of 100,000 it used 35,937. Give a call that sends HBAR a margin over the estimate.
+- **F4.** `forge verify-contract --verifier sourcify` of forge 1.7.1 calls Sourcify's v2 API, which gave an exact runtime match (compare C2).
