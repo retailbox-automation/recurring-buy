@@ -9,6 +9,7 @@ import os from "node:os";
 import path from "node:path";
 import { after, test } from "node:test";
 import { fileURLToPath } from "node:url";
+import { contractCopyProblems } from "./same-contracts.mjs";
 import { scanTree, selfTest } from "./scan-secrets.mjs";
 import { validateTemplateJson } from "./validate-template-json.mjs";
 
@@ -112,4 +113,44 @@ test("secret scanner reports a committed .env, a key and a filled .env.example",
   const rules = scanTree(dir).findings.map(f => f.rule).sort();
   assert.deepEqual(rules, ["env-example-value", "env-file", "hex-key-assignment"]);
   assert.equal(runNode("scan-secrets.mjs", ["--tree", dir]).status, 1);
+});
+
+test("secret scanner skips a git submodule and still reads the files around it", () => {
+  const dir = tmpRepo({ "src/config.ts": 'const OPERATOR_KEY = "0x' + "f".repeat(64) + '";\n' });
+  fs.mkdirSync(path.join(dir, "lib/dep"), { recursive: true });
+  const git = args => spawnSync("git", ["-C", dir, ...args], { encoding: "utf8" });
+  git(["init", "-q"]);
+  git(["update-index", "--add", "--cacheinfo", `160000,${"a".repeat(40)},lib/dep`]);
+  const report = scanTree(dir);
+  assert.deepEqual(report.readErrors, []);
+  assert.equal(report.skipped, 1);
+  assert.deepEqual(report.findings.map(f => f.rule), ["hex-key-assignment"]);
+});
+
+const contracts = {
+  "packages/hardhat/contracts/A.sol": "contract A {}\n",
+  "packages/hardhat/contracts/mocks/M.sol": "contract M {}\n",
+  "packages/foundry/contracts/A.sol": "contract A {}\n",
+  "packages/foundry/contracts/mocks/M.sol": "contract M {}\n",
+};
+
+test("the repository's Hardhat and Foundry contracts are the same", () => {
+  assert.deepEqual(contractCopyProblems(repoRoot), []);
+});
+
+test("contract copies: identical copies pass, and so does a single package", () => {
+  assert.deepEqual(contractCopyProblems(tmpRepo(contracts)), []);
+  assert.deepEqual(contractCopyProblems(tmpRepo({ "packages/hardhat/contracts/A.sol": "contract A {}\n" })), []);
+});
+
+test("contract copies: a changed byte or a missing file fails", () => {
+  const changed = tmpRepo({ ...contracts, "packages/foundry/contracts/mocks/M.sol": "contract M { }\n" });
+  assert.deepEqual(contractCopyProblems(changed), [
+    "contracts/mocks/M.sol differs between packages/hardhat/contracts and packages/foundry/contracts",
+  ]);
+  const missing = { ...contracts };
+  delete missing["packages/foundry/contracts/A.sol"];
+  assert.match(contractCopyProblems(tmpRepo(missing)).join("\n"), /packages\/hardhat\/contracts\/A\.sol has no copy/);
+  assert.equal(runNode("same-contracts.mjs", [tmpRepo(missing)]).status, 1);
+  assert.equal(runNode("same-contracts.mjs", [tmpRepo(contracts)]).status, 0);
 });

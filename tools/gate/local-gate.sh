@@ -17,11 +17,13 @@
 #
 # Environment:
 #   GATE_CLI_VERSION  create-scaffold-hbar version to run (default 0.4.0)
+#   GATE_FRAMEWORK    hardhat or foundry to scaffold (default: the manifest's default).
+#                     The Foundry leg needs forge on PATH.
 #   GATE_ROUTES       space-separated routes to probe (default: paths in
 #                     .harness/validators/playwright-smoke.yaml, else "/")
 #   GATE_KEEP=1       keep the work directory (scaffold + logs) after the run
 #
-# Requires: node, git, curl, tar; yarn for the yarn leg; gh for private repos.
+# Requires: node, git, curl, tar; yarn for the yarn leg; forge for the Foundry leg; gh for private repos.
 # Run install in the repository that holds this script first (the manifest
 # validator imports zod from it).
 #
@@ -145,37 +147,42 @@ if [[ $LOCAL -eq 0 && "$DEFAULT_BRANCH" != "main" ]]; then
 fi
 G2_SECONDS=$((SECONDS - t0))
 DEFAULT_FW="$(node -e 'try{const m=require(process.argv[1]);console.log(m["create-scaffold-hbar"]?.defaults?.solidityFramework??"")}catch{console.log("")}' "$SRC/template.json")"
+FW="${GATE_FRAMEWORK:-${DEFAULT_FW:-hardhat}}"
+[[ "$FW" == "hardhat" || "$FW" == "foundry" ]] || { echo "framework must be hardhat or foundry, got: $FW" >&2; exit 2; }
+echo "framework: $FW$([[ "$FW" == "$DEFAULT_FW" ]] && echo " (the manifest's default)")"
 
 # ---- G1: scaffold -----------------------------------------------------------------------------------
 SCAFFOLD_ARGS=(app --template "$TEMPLATE_REF" --ci --skip-hedera-skills --package-manager "$PM")
 SCAFFOLD_ENV=()
 if [[ $LOCAL -eq 1 ]]; then
-  # The CLI reads capabilities from GitHub, which has no local/HEAD: pass the manifest's framework.
-  [[ -n "$DEFAULT_FW" ]] && SCAFFOLD_ARGS+=(-s "$DEFAULT_FW")
+  # The CLI reads capabilities from GitHub, which has no local/HEAD: pass the framework.
+  SCAFFOLD_ARGS+=(-s "$FW")
   SCAFFOLD_ENV+=("CREATE_SCAFFOLD_HBAR_TEMPLATE_DIR=$SRC")
 elif [[ "$PRIVATE" != "false" ]]; then
   # The CLI fetches template.json anonymously, so a private repository falls back to CLI
-  # defaults (Foundry). Pass the manifest's framework and a download token instead; the
+  # defaults (Foundry). Pass the framework and a download token instead; the
   # "manifest applied" check below is skipped because it cannot be observed here.
-  [[ -n "$DEFAULT_FW" ]] && SCAFFOLD_ARGS+=(-s "$DEFAULT_FW")
+  SCAFFOLD_ARGS+=(-s "$FW")
   SCAFFOLD_ENV+=("GIGET_AUTH=$(gh auth token 2>/dev/null)")
+elif [[ "$FW" != "$DEFAULT_FW" ]]; then
+  SCAFFOLD_ARGS+=(-s "$FW")
 fi
 started=$SECONDS
 (cd "$WORK" && "${CLEAN_ENV[@]}" ${SCAFFOLD_ENV[@]+"${SCAFFOLD_ENV[@]}"} npx -y "create-scaffold-hbar@$CLI_VERSION" "${SCAFFOLD_ARGS[@]}") >"$LOGS/scaffold.log" 2>&1
 code=$?
 G1_SECONDS=$((SECONDS - started))
 if [[ $code -eq 0 && -f "$APP/package.json" ]]; then
-  record G1 "scaffold: npx create-scaffold-hbar@$CLI_VERSION --template $TEMPLATE_REF" PASS "$G1_SECONDS" "includes the CLI's own install and format"
+  record G1 "scaffold: npx create-scaffold-hbar@$CLI_VERSION --template $TEMPLATE_REF ($FW)" PASS "$G1_SECONDS" "includes the CLI's own install and format"
   SCAFFOLD_OK=1
 else
   echo "---- scaffold.log (exit $code), last 30 lines ----" >&2; tail -n 30 "$LOGS/scaffold.log" >&2
-  record G1 "scaffold: npx create-scaffold-hbar@$CLI_VERSION --template $TEMPLATE_REF" FAIL "$G1_SECONDS" "exit $code"
+  record G1 "scaffold: npx create-scaffold-hbar@$CLI_VERSION --template $TEMPLATE_REF ($FW)" FAIL "$G1_SECONDS" "exit $code"
   SCAFFOLD_OK=0
 fi
 
 # Must-differ control for G2: without -s the CLI picks the framework from our manifest;
 # if it could not read the manifest it would fall back to Foundry.
-if [[ $SCAFFOLD_OK -eq 1 && $LOCAL -eq 0 && "$PRIVATE" == "false" && -n "$DEFAULT_FW" ]]; then
+if [[ $SCAFFOLD_OK -eq 1 && $LOCAL -eq 0 && "$PRIVATE" == "false" && -n "$DEFAULT_FW" && "$FW" == "$DEFAULT_FW" ]]; then
   if [[ -d "$APP/packages/$DEFAULT_FW" ]]; then
     G2_NOTE="$G2_NOTE manifest applied by the CLI (packages/$DEFAULT_FW present)"
   else
@@ -185,6 +192,8 @@ elif [[ $LOCAL -eq 1 ]]; then
   G2_NOTE="$G2_NOTE manifest-applied check skipped (--local: the CLI reads template.json from GitHub)"
 elif [[ "$PRIVATE" != "false" ]]; then
   G2_NOTE="$G2_NOTE manifest-applied check skipped (private repo: CLI reads template.json anonymously)"
+elif [[ "$FW" != "$DEFAULT_FW" ]]; then
+  G2_NOTE="$G2_NOTE manifest-applied check skipped (-s $FW)"
 fi
 record G2 "template.json valid (CLI 0.4.0 schema)$([[ $LOCAL -eq 1 ]] || echo ' on branch main')" "$G2_STATUS" "$G2_SECONDS" "$G2_NOTE"
 
@@ -201,23 +210,34 @@ if [[ $SCAFFOLD_OK -eq 1 ]]; then
   code=$?
   record G4 "install (${PM}$([[ $PM == yarn ]] && echo ' --immutable'))" "$([[ $code -eq 0 ]] && echo PASS || echo FAIL)" "$STEP_SECONDS"
 
+  # ESLint runs with --max-warnings=0; forge fmt --check (foundry:lint) has no warnings to count.
   lint_seconds=0; lint_failed=""
-  for script in next:lint hardhat:lint; do
-    pm_run "lint-${script%%:*}" "$script" ${RUN_SEP[@]+"${RUN_SEP[@]}"} --max-warnings=0 || lint_failed="$lint_failed $script"
+  for script in next:lint "$FW:lint"; do
+    if [[ "$script" == foundry:lint ]]; then pm_run lint-foundry "$script" || lint_failed="$lint_failed $script"
+    else pm_run "lint-${script%%:*}" "$script" ${RUN_SEP[@]+"${RUN_SEP[@]}"} --max-warnings=0 || lint_failed="$lint_failed $script"; fi
     lint_seconds=$((lint_seconds + STEP_SECONDS))
   done
   pm_run check-types next:check-types || lint_failed="$lint_failed next:check-types"
   lint_seconds=$((lint_seconds + STEP_SECONDS))
-  if [[ -z "$lint_failed" ]]; then record G4 "lint (--max-warnings=0) + next:check-types" PASS "$lint_seconds"
-  else record G4 "lint (--max-warnings=0) + next:check-types" FAIL "$lint_seconds" "failed:$lint_failed"; fi
+  if [[ -z "$lint_failed" ]]; then record G4 "lint (next:lint, $FW:lint) + next:check-types" PASS "$lint_seconds"
+  else record G4 "lint (next:lint, $FW:lint) + next:check-types" FAIL "$lint_seconds" "failed:$lint_failed"; fi
 
   build_seconds=0; build_failed=""
-  for script in hardhat:compile next:build; do
+  for script in "$FW:compile" next:build; do
     pm_run "build-${script%%:*}" "$script" || build_failed="$build_failed $script"
     build_seconds=$((build_seconds + STEP_SECONDS))
   done
-  if [[ -z "$build_failed" ]]; then record G4 "build (hardhat:compile + next:build)" PASS "$build_seconds"
-  else record G4 "build (hardhat:compile + next:build)" FAIL "$build_seconds" "failed:$build_failed"; fi
+  if [[ -z "$build_failed" ]]; then record G4 "build ($FW:compile + next:build)" PASS "$build_seconds"
+  else record G4 "build ($FW:compile + next:build)" FAIL "$build_seconds" "failed:$build_failed"; fi
+
+  # After the compile: next:test compares the app's ABI with the compiled contract.
+  test_seconds=0; test_failed=""
+  for script in "$FW:test" next:test; do
+    pm_run "test-${script%%:*}" "$script" || test_failed="$test_failed $script"
+    test_seconds=$((test_seconds + STEP_SECONDS))
+  done
+  if [[ -z "$test_failed" ]]; then record G4 "test ($FW:test + next:test)" PASS "$test_seconds"
+  else record G4 "test ($FW:test + next:test)" FAIL "$test_seconds" "failed:$test_failed"; fi
 
   # ---- G5: boot without .env and probe core routes --------------------------------------------------
   started=$SECONDS
@@ -315,6 +335,15 @@ elif command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
   [[ "$spdx" == "MIT" ]] || G8_STATUS=FAIL
 fi
 record G8 "MIT licence" "$G8_STATUS" $((SECONDS - started)) "$g8_note"
+
+# ---- G9: the Hardhat and Foundry packages carry the same contract sources (checked in the template) --------
+started=$SECONDS
+if node "$GATE_DIR/same-contracts.mjs" "$SRC" >"$LOGS/same-contracts.log" 2>&1; then
+  record G9 "same contracts/ in packages/hardhat and packages/foundry" PASS $((SECONDS - started))
+else
+  cat "$LOGS/same-contracts.log" >&2
+  record G9 "same contracts/ in packages/hardhat and packages/foundry" FAIL $((SECONDS - started)) "see same-contracts.log"
+fi
 
 # ---- report --------------------------------------------------------------------------------------------
 echo
