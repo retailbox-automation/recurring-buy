@@ -27,8 +27,9 @@ export const ReferencePlan = () => {
     return (
       <Panel title={title}>
         <p className="m-0 text-base-content/70" data-testid="reference-plan-missing">
-          Reference plan not deployed yet. After <code>yarn hardhat:deploy:testnet</code> and a first plan, set{" "}
-          <code>referencePlan</code> in <code>packages/nextjs/scaffold.config.ts</code> to watch it here.
+          Reference plan not deployed yet. After a deploy (the <code>hardhat:deploy:testnet</code> or{" "}
+          <code>foundry:deploy:testnet</code> script) and a first plan, set <code>referencePlan</code> in{" "}
+          <code>packages/nextjs/scaffold.config.ts</code> to watch it here.
         </p>
       </Panel>
     );

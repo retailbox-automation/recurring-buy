@@ -136,8 +136,9 @@ const Unavailable = ({ network }: { network: RecurringBuyNetwork }) => (
       </p>
     ) : (
       <p className="m-0">
-        There is no RecurringBuy on {network.networkName} yet. Deploy one with <code>yarn hardhat:deploy:testnet</code>,
-        or set <code>referencePlan.contract</code> in <code>packages/nextjs/scaffold.config.ts</code> to a deployed one.
+        There is no RecurringBuy on {network.networkName} yet. Deploy one with the <code>hardhat:deploy:testnet</code>{" "}
+        or <code>foundry:deploy:testnet</code> script, or set <code>referencePlan.contract</code> in{" "}
+        <code>packages/nextjs/scaffold.config.ts</code> to a deployed one.
       </p>
     )}
   </Panel>

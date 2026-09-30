@@ -110,7 +110,7 @@ create-scaffold-hbar (0.4.x, `src/tasks/copy-template-files.ts` and `src/tasks/c
 - In the root `package.json` it deletes the other framework's `hardhat:*` or `foundry:*` scripts and cuts `&& yarn <other>:<script>` out of scripts that chain them, such as `lint` and `format`. A script meant for both variants names both frameworks in one chain.
 - `{run:framework:<script>}` in `template.json`'s outro becomes `yarn hardhat:<script>` or `yarn foundry:<script>`: each such command needs a script for both frameworks.
 - For Foundry it runs `forge install` for every library that `packages/foundry/remappings.txt` maps into `lib/`, with the URL from the root `.gitmodules` and the tag from `packages/foundry/foundry.lock`. A new library needs all three. A Hardhat project keeps `.gitmodules`, which lists paths it does not have; git ignores that.
-- In npm projects it rewrites text files for npm, `packages/foundry/package.json` included, so Foundry scripts must not call `yarn`.
+- In a project that uses npm, it rewrites text files for npm, `packages/foundry/package.json` included, so Foundry scripts must not call `yarn`.
 
 ## Rules for changes
 
@@ -131,7 +131,7 @@ yarn gate:test                                   # gate tools: every check has a
 yarn gate:manifest                               # template.json vs the create-scaffold-hbar schema
 yarn gate:secrets                                # secrets and .env in the tree and git history
 yarn gate:local                                  # full gate on fresh scaffolds of the last local commit: Hardhat, then Foundry
-bash tools/gate/local-gate.sh <owner/repo[#branch]> <package-manager>   # the same from GitHub, e.g. for the npm leg
+bash tools/gate/local-gate.sh <owner/repo[#branch]> <package-manager>   # the same from GitHub, for either package manager
 npx hedera-harness validate                      # install, lint, build, test, then renders core routes
 ```
 

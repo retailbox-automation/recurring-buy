@@ -4,7 +4,7 @@ This template starts from the official scaffold-hbar blank starter. This file se
 
 ## Starter (upstream, MIT)
 
-- Generated on 2026-09-24 with create-scaffold-hbar 0.4.0 (npm package `create-scaffold-hbar@0.4.0`; source `hedera-dev/create-scaffold-hbar`, tag `v0.4.0`, commit `5732f5e`):
+- Generated on 2026-09-24 with create-scaffold-hbar 0.4.0 (package `create-scaffold-hbar@0.4.0` on npm; source `hedera-dev/create-scaffold-hbar`, tag `v0.4.0`, commit `5732f5e`):
 
   ```bash
   npm create scaffold-hbar@latest template -- --template blank -s hardhat --package-manager yarn --ci --skip-hedera-skills
@@ -28,14 +28,14 @@ Changed in starter files:
 - `packages/hardhat/scripts/generateTsAbis.ts`: a deploy that deploys nothing (any network without the Hedera Schedule Service) ends cleanly instead of throwing.
 - `packages/nextjs`: the home page replaced; `Header.tsx` names the app and links its pages; `Footer.tsx` keeps the price, faucet and theme controls in the page flow instead of fixed over the content; `scaffold.config.ts` gains `referencePlan`; the burner wallet exists only in a build made with `NEXT_PUBLIC_ENABLE_BURNER_WALLET=true`.
 - Root `package.json`: `gate:*`, `harness:run`, `hardhat:deploy:testnet` and `foundry:*` scripts; `hedera-harness` and `zod` dev dependencies; a third workspace package and its `saucerswap:*` scripts (see Added).
-- `packages/nextjs/next.config.ts`: the optional `@x402/*` imports of `@coinbase/cdp-sdk` resolve to empty modules, so npm scaffolds build (the upstream blank starter fails `next build` on npm).
+- `packages/nextjs/next.config.ts`: the optional `@x402/*` imports of `@coinbase/cdp-sdk` resolve to empty modules, so `next build` passes in npm-based scaffolds (the upstream blank starter fails it on npm).
 
 Added:
 
 - `template.json` (manifest for create-scaffold-hbar).
 - `tools/gate/` (eligibility gate scripts and their tests).
 - `.github/workflows/gate.yml` (the same gate in CI).
-- `.gitleaks.toml` (gitleaks defaults, minus the vendored Yarn release).
+- `.gitleaks.toml` (gitleaks defaults, minus Yarn's vendored release and plugins).
 - `.harness/` (Hedera Harness v3 recipe and validators).
 - `packages/saucerswap/` (`@sh/saucerswap`): a SaucerSwap V2 client with no React in it: addresses, quotes, swap paths and calldata, HTS association, wrapping HBAR into WHBAR, a gas limit for swaps. The app uses it for the quote, the price floor, the associations and the wrap.
 - `packages/hardhat/contracts/RecurringBuy.sol`, the interfaces and mocks next to it, `test/RecurringBuy.test.ts` and `deploy/00_deploy_recurring_buy.ts`.
