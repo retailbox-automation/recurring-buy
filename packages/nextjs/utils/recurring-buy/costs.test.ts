@@ -1,11 +1,10 @@
-// Fixtures are testnet mirror node responses of 2026-09-30: /network/fees, and the account 0.0.10012993 with its WHBAR
-// and SAUCE relationships (the account record keeps five fields).
+// Fixtures are testnet mirror node responses of 2026-09-30: the account 0.0.10012993 with its WHBAR and SAUCE
+// relationships (the account record keeps five fields).
 import { MEASURED_GAS, type SignStep, gasLimitFor, stepsToSign, tickCost, walletState } from "./costs";
 import ownerSauce from "./fixtures/account-0.0.10012993-sauce.json";
 import ownerWhbar from "./fixtures/account-0.0.10012993-whbar.json";
 import owner from "./fixtures/account-0.0.10012993.json";
-import networkFees from "./fixtures/network-fees.json";
-import { fetchGasPrice, fetchMirrorAccount } from "./mirror";
+import { fetchMirrorAccount } from "./mirror";
 import { fixtureMirror } from "./testing";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
@@ -13,20 +12,6 @@ import { describe, it } from "node:test";
 const TESTNET_PRICE = { contractCall: 109n, ethereumTransaction: 109n };
 const WHBAR = "0x0000000000000000000000000000000000003ad2"; // 0.0.15058
 const SAUCE = "0x0000000000000000000000000000000000120f46"; // 0.0.1183558
-
-describe("fetchGasPrice", () => {
-  it("reads the tinybar per gas the network bills from /network/fees", async () => {
-    const { mirror, requested } = fixtureMirror({ "/network/fees": networkFees });
-    assert.deepEqual(await fetchGasPrice(mirror), TESTNET_PRICE);
-    assert.deepEqual(requested, ["/network/fees"]);
-  });
-
-  it("fails when a transaction type has no price", async () => {
-    const fees = networkFees.fees.filter(fee => fee.transaction_type !== "ContractCall");
-    const { mirror } = fixtureMirror({ "/network/fees": { ...networkFees, fees } });
-    await assert.rejects(fetchGasPrice(mirror), /ContractCall/);
-  });
-});
 
 describe("tickCost", () => {
   it("prices a tick at what the network charged for one", () => {
@@ -56,7 +41,7 @@ describe("stepsToSign", () => {
       spendIsWhbar: true,
       need: NEED,
       tokenReady: true,
-      wallet: { holdsOut: false, holdsIn: false, balanceIn: 0n, allowance: 0n },
+      wallet: { associatedOut: false, associatedIn: false, balanceIn: 0n, allowance: 0n },
     });
     assert.deepEqual(kinds(steps), ["associate-out", "associate-in", "wrap", "approve", "start"]);
     assert.equal(steps.find(step => step.kind === "wrap")?.amount, NEED);
@@ -69,7 +54,7 @@ describe("stepsToSign", () => {
       spendIsWhbar: true,
       need: NEED,
       tokenReady: true,
-      wallet: { holdsOut: true, holdsIn: true, balanceIn: 15_000_000n, allowance: 0n },
+      wallet: { associatedOut: true, associatedIn: true, balanceIn: 15_000_000n, allowance: 0n },
     });
     assert.deepEqual(kinds(steps), ["wrap", "approve", "start"]);
     assert.equal(steps[0].amount, 5_000_000n);
@@ -81,7 +66,7 @@ describe("stepsToSign", () => {
       spendIsWhbar: true,
       need: NEED,
       tokenReady: true,
-      wallet: { holdsOut: true, holdsIn: true, balanceIn: NEED, allowance: NEED },
+      wallet: { associatedOut: true, associatedIn: true, balanceIn: NEED, allowance: NEED },
     });
     assert.deepEqual(kinds(steps), ["start"]);
   });
@@ -91,7 +76,7 @@ describe("stepsToSign", () => {
       spendIsWhbar: false,
       need: NEED,
       tokenReady: true,
-      wallet: { holdsOut: false, holdsIn: false, balanceIn: 0n, allowance: 0n },
+      wallet: { associatedOut: false, associatedIn: false, balanceIn: 0n, allowance: 0n },
     });
     assert.deepEqual(kinds(steps), ["associate-out", "approve", "start"]);
   });
@@ -134,7 +119,7 @@ describe("stepsToSign", () => {
       spendIsWhbar: false,
       need: NEED,
       tokenReady: false,
-      wallet: { holdsOut: true, holdsIn: true, balanceIn: NEED, allowance: NEED },
+      wallet: { associatedOut: true, associatedIn: true, balanceIn: NEED, allowance: NEED },
     });
     assert.equal(start.gas, 3_114_516n);
   });

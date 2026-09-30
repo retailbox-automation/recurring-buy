@@ -1,13 +1,22 @@
 // Fixtures are testnet mirror node responses for objects of the two prototype runs (docs/testnet-findings.md),
-// fetched 2026-09-29. contract-prototype.json keeps four fields of /contracts/0.0.10777783;
-// every other file is the full response body.
+// fetched 2026-09-29, and network-fees.json, /network/fees of 2026-09-30. contract-prototype.json keeps four fields of
+// /contracts/0.0.10777783; every other file is the full response body.
+import networkFees from "./fixtures/network-fees.json";
 import negativeByNonce from "./fixtures/result-negative-by-nonce.json";
 import negativeByTimestamp from "./fixtures/result-negative-by-timestamp.json";
 import tick1ByTimestamp from "./fixtures/result-tick1-by-timestamp.json";
 import expiredSchedule from "./fixtures/schedule-0.0.10702201-expired.json";
 import tick1Schedule from "./fixtures/schedule-0.0.10777792-tick1.json";
 import tick1Transactions from "./fixtures/transactions-tick1.json";
-import { MISSED_AFTER_SECONDS, createMirror, fetchExecution, fetchTickCharge, paidBy, scheduleState } from "./mirror";
+import {
+  MISSED_AFTER_SECONDS,
+  createMirror,
+  fetchExecution,
+  fetchGasPrice,
+  fetchTickCharge,
+  paidBy,
+  scheduleState,
+} from "./mirror";
 import { TESTNET_MIRROR, fixtureMirror } from "./testing";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
@@ -99,5 +108,19 @@ describe("createMirror", () => {
     assert.equal(await mirror.get("/missing"), null);
     const failing = (async () => new Response("", { status: 503 })) as typeof fetch;
     await assert.rejects(createMirror(TESTNET_MIRROR, failing).get("/schedules/0.0.1"), /HTTP 503/);
+  });
+});
+
+describe("fetchGasPrice", () => {
+  it("reads the tinybar per gas the network bills from /network/fees", async () => {
+    const { mirror, requested } = fixtureMirror({ "/network/fees": networkFees });
+    assert.deepEqual(await fetchGasPrice(mirror), { contractCall: 109n, ethereumTransaction: 109n });
+    assert.deepEqual(requested, ["/network/fees"]);
+  });
+
+  it("fails when a transaction type has no price", async () => {
+    const fees = networkFees.fees.filter(fee => fee.transaction_type !== "ContractCall");
+    const { mirror } = fixtureMirror({ "/network/fees": { ...networkFees, fees } });
+    await assert.rejects(fetchGasPrice(mirror), /ContractCall/);
   });
 });

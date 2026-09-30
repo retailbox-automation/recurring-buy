@@ -44,6 +44,8 @@ import { type PlanParams, ticksRun } from "~~/utils/recurring-buy/plan";
  * on testnet (docs/testnet-findings.md, E4); the contract keeps RESCHEDULE_GAS of it back for the next schedule.
  */
 const TICK_GAS_LIMIT = 1_900_000n;
+/** Gas the tick gas limit keeps above RESCHEDULE_GAS for the pull and the swap; `buy` gets a little less (D3, F2). */
+const BUY_GAS = 300_000n;
 /** HBAR and WHBAR both have 8 decimals. */
 const HBAR_DECIMALS = 8;
 
@@ -200,9 +202,7 @@ const PlanBuilder = ({ network, contract }: { network: RecurringBuyNetwork; cont
   });
   const [reserveGasPrice, rescheduleGas, tokenReady] = contractState ?? [];
   const tickGasLimit =
-    rescheduleGas !== undefined && rescheduleGas + 300_000n > TICK_GAS_LIMIT
-      ? rescheduleGas + 300_000n
-      : TICK_GAS_LIMIT;
+    rescheduleGas !== undefined && rescheduleGas + BUY_GAS > TICK_GAS_LIMIT ? rescheduleGas + BUY_GAS : TICK_GAS_LIMIT;
   const reservePerTick = reserveGasPrice !== undefined ? tickGasLimit * reserveGasPrice : undefined;
   const deposit = reservePerTick !== undefined ? reservePerTick * ticks : undefined;
 
@@ -246,8 +246,8 @@ const PlanBuilder = ({ network, contract }: { network: RecurringBuyNetwork; cont
       ? walletState(account.data, { tokenIn, tokenOut, allowance: sharingKnown ? allowance : undefined })
       : {};
   const inBalance = wallet.balanceIn;
-  const inAssociated = wallet.holdsIn === true;
-  const outAssociated = wallet.holdsOut === true;
+  const inAssociated = wallet.associatedIn === true;
+  const outAssociated = wallet.associatedOut === true;
 
   const steps = stepsToSign({ spendIsWhbar, need: neededAllowance, tokenReady, wallet });
   const shortfall = address && account.data ? (steps.find(step => step.kind === "wrap")?.amount ?? 0n) : 0n;
@@ -266,7 +266,7 @@ const PlanBuilder = ({ network, contract }: { network: RecurringBuyNetwork; cont
 
   const ready = problems.length === 0 && minAmountOut > 0n && deposit !== undefined;
   const allowanceDone = allowance !== undefined && ready && sharingKnown && allowance >= neededAllowance;
-  const hasSlice = inBalance !== undefined && inBalance >= amountPerTick;
+  const coversOneBuy = inBalance !== undefined && inBalance >= amountPerTick;
 
   const params: PlanParams = {
     tokenIn: tokenIn ?? contract,
@@ -647,7 +647,7 @@ const PlanBuilder = ({ network, contract }: { network: RecurringBuyNetwork; cont
               title="Start the plan"
               state={ready && allowanceDone && outAssociated ? "todo" : "blocked"}
             >
-              {inBalance !== undefined && !hasSlice && (
+              {inBalance !== undefined && !coversOneBuy && (
                 <p className="m-0 text-sm text-warning">
                   You hold {formatToken(inBalance, tokenIn!, inInfo)}, less than one buy: the first tick would stop the
                   plan.
@@ -660,7 +660,7 @@ const PlanBuilder = ({ network, contract }: { network: RecurringBuyNetwork; cont
               )}
               <button
                 className="btn btn-primary self-start"
-                disabled={busy !== null || !ready || !allowanceDone || !outAssociated || !hasSlice}
+                disabled={busy !== null || !ready || !allowanceDone || !outAssociated || !coversOneBuy}
                 onClick={start}
               >
                 {busy === "start"
@@ -685,7 +685,7 @@ const PlanBuilder = ({ network, contract }: { network: RecurringBuyNetwork; cont
           </ol>
         )}
       </Panel>
-      {!showWrap && inBalance !== undefined && inBalance < total && hasSlice && (
+      {!showWrap && inBalance !== undefined && inBalance < total && coversOneBuy && (
         <p className="m-0 text-sm text-base-content/60">
           You hold {formatUnits(inBalance, inInfo?.decimals ?? 0)} {inSymbol}, enough for{" "}
           {(inBalance / amountPerTick).toString()} of {ticks.toString()} buys; the plan stops at the first tick it

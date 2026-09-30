@@ -110,7 +110,7 @@ function refetchAfter(plan: PlanView): number | false {
   return open ? 60_000 : false;
 }
 
-export type PlanLookup = {
+type PlanLookup = {
   /** Null when the contract has no such plan among the events read. */
   plan: PlanView | null;
   /** The contract has more events than were read, and the plan's creation was not among them. */
@@ -242,7 +242,7 @@ export function useMirrorAccount(network: RecurringBuyNetwork, address: string |
   });
 }
 
-/** SaucerSwap V2 QuoterV2's output for one slice, via `eth_call`; errors when the pool has no route or liquidity. */
+/** SaucerSwap V2 QuoterV2's output for one buy, via `eth_call`; errors when the pool has no route or liquidity. */
 export function useQuote(
   network: RecurringBuyNetwork,
   route: { tokenIn: string; fee: number; tokenOut: string } | null,

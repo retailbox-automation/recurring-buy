@@ -14,7 +14,7 @@ const STEPS = [
   {
     icon: ArrowsRightLeftIcon,
     title: "Swap",
-    body: "The contract takes one slice and swaps it on SaucerSwap V2 straight to you, never below your price floor.",
+    body: "The contract takes one buy's worth and swaps it on SaucerSwap V2 straight to you, never below your price floor.",
   },
   {
     icon: ArrowPathIcon,

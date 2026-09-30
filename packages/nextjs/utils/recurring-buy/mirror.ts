@@ -21,7 +21,7 @@ export type MirrorSchedule = {
 };
 
 /** /contracts/{id}/results/{timestamp}: one EVM execution. */
-export type MirrorContractResult = {
+type MirrorContractResult = {
   timestamp: string;
   result: string;
   contract_id: string | null;
@@ -29,7 +29,7 @@ export type MirrorContractResult = {
 };
 
 /** /transactions?timestamp=…: the record of one transaction, with the HBAR it moved. */
-export type MirrorTransaction = {
+type MirrorTransaction = {
   consensus_timestamp: string;
   /** For a scheduled tick this inherits the relay's id and nonce from the call that created the schedule. */
   transaction_id: string;

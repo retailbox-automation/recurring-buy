@@ -85,7 +85,7 @@ export function decodePlanLog(log: MirrorLog): PlanEvent | null {
 const revertAbi = [...recurringBuyAbi, ...parseAbi(["error Error(string message)", "error Panic(uint256 code)"])];
 
 /** A tick's revert reason, as bytes from TickSkipped or an `error_message`, in words. */
-export function describeRevert(data: Hex | null): string {
+function describeRevert(data: Hex | null): string {
   if (!data || data === "0x") return "no reason given; for example, out of gas";
   try {
     const { errorName, args } = decodeErrorResult({ abi: revertAbi, data });
@@ -96,13 +96,13 @@ export function describeRevert(data: Hex | null): string {
   }
 }
 
-/** SaucerSwap's revert when one slice would buy less than the plan's `minAmountOut`. */
+/** SaucerSwap's revert when a buy would get less than the plan's `minAmountOut`. */
 export const BELOW_FLOOR_REASON = "Too little received";
 
-export type TickOutcome =
+type TickOutcome =
   | { kind: "bought"; timestamp: string; amountIn: bigint; amountOut: bigint }
   | { kind: "skipped"; timestamp: string; reason: string }
-  /** The allowance or balance could not cover the slice: the plan stopped at this tick. */
+  /** The allowance or balance could not cover one buy: the plan stopped at this tick. */
   | { kind: "pull-failed"; timestamp: string }
   /** The whole tick reverted: nothing was bought and nothing was scheduled after it. */
   | { kind: "reverted"; timestamp: string; reason: string }
@@ -140,7 +140,7 @@ export type ChainStatus =
   | { kind: "indexing" };
 
 /** What the mirror node says about the schedule of a tick that has no outcome event. */
-export type ScheduleLookup = { record: MirrorSchedule | null; state: ScheduleState | null; revert: string | null };
+type ScheduleLookup = { record: MirrorSchedule | null; state: ScheduleState | null; revert: string | null };
 
 /**
  * One row per tick, from the plan's events. A tick without an outcome event is settled from `lookups` (by schedule id):
@@ -248,7 +248,7 @@ export type PlanView = {
   refunded: bigint;
 };
 
-export type ContractEvents = {
+type ContractEvents = {
   /** The contract's Hedera id, "0.0.N". */
   contractId: string;
   /** Oldest first. */

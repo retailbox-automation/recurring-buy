@@ -34,23 +34,23 @@ export type SignStep = {
   amount?: bigint;
 };
 
-/** What the wallet holds; a field is undefined until it is read. */
+/** The wallet's associations, balance and allowance; a field is undefined until it is read. */
 export type WalletState = {
-  holdsOut?: boolean;
-  holdsIn?: boolean;
+  associatedOut?: boolean;
+  associatedIn?: boolean;
   balanceIn?: bigint;
   allowance?: bigint;
 };
 
-/** A wallet's state from its mirror node account: it holds a token only if it is associated with it. */
+/** A wallet's state from its mirror node account, which lists a token only if the account is associated with it. */
 export function walletState(
   account: MirrorAccount,
   { tokenIn, tokenOut, allowance }: { tokenIn: string | null; tokenOut: string | null; allowance?: bigint },
 ): WalletState {
   const balance = (token: string | null) => (token ? account.tokens[hederaIdOf(token)] : undefined);
   return {
-    holdsOut: balance(tokenOut) !== undefined,
-    holdsIn: balance(tokenIn) !== undefined,
+    associatedOut: balance(tokenOut) !== undefined,
+    associatedIn: balance(tokenIn) !== undefined,
     balanceIn: tokenIn ? (balance(tokenIn) ?? 0n) : undefined,
     allowance,
   };
@@ -78,10 +78,10 @@ export function stepsToSign({
   const add = (kind: SignStep["kind"], gas: bigint, known: boolean, amount?: bigint) =>
     steps.push({ kind, gas, ifNeeded: !known, ...(amount === undefined ? {} : { amount }) });
 
-  if (wallet.holdsOut !== true) add("associate-out", MEASURED_GAS.associate, wallet.holdsOut !== undefined);
+  if (wallet.associatedOut !== true) add("associate-out", MEASURED_GAS.associate, wallet.associatedOut !== undefined);
   const shortfall = wallet.balanceIn === undefined ? need : need - wallet.balanceIn;
   if (spendIsWhbar && shortfall > 0n) {
-    if (wallet.holdsIn !== true) add("associate-in", MEASURED_GAS.associate, wallet.holdsIn !== undefined);
+    if (wallet.associatedIn !== true) add("associate-in", MEASURED_GAS.associate, wallet.associatedIn !== undefined);
     add("wrap", MEASURED_GAS.wrap, wallet.balanceIn !== undefined, shortfall);
   }
   if (wallet.allowance === undefined || wallet.allowance < need)
