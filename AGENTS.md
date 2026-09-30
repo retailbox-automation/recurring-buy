@@ -4,7 +4,7 @@ Briefing for coding agents (Claude Code, Cursor, Codex) working in this reposito
 
 ## What this is
 
-A scaffold-hbar template for Hedera: `packages/nextjs` (Next.js App Router, RainbowKit, wagmi, viem, DaisyUI), `packages/hardhat` (Hardhat, hardhat-deploy), and `packages/saucerswap` (`@sh/saucerswap`, a framework-agnostic SaucerSwap V2 client — see its README). It is Hardhat-only; there is no Foundry package. The use case is not implemented yet: the contracts are the starter samples `HederaToken` (ERC-20) and `HtsTokenCreator` (HTS precompile at `0x167`).
+A scaffold-hbar template for Hedera: `packages/nextjs` (Next.js App Router, RainbowKit, wagmi, viem, DaisyUI), `packages/hardhat` (Hardhat, hardhat-deploy), and `packages/saucerswap` (`@sh/saucerswap`, a framework-agnostic SaucerSwap V2 client — see its README). It is Hardhat-only; there is no Foundry package. The one contract is `RecurringBuy`.
 
 ## Package manager
 

@@ -76,10 +76,9 @@ function getInheritedFunctions(sources: Record<string, any>, contractName: strin
 }
 
 function getContractDataFromDeployments() {
-  if (!fs.existsSync(DEPLOYMENTS_DIR)) {
-    throw Error("At least one other deployment script should exist to generate an actual contract.");
-  }
   const output = {} as Record<string, any>;
+  // Nothing is deployed on a network without the Hedera Schedule Service, such as the local fork.
+  if (!fs.existsSync(DEPLOYMENTS_DIR)) return output;
   const chainDirectories = getDirectories(DEPLOYMENTS_DIR);
   for (const chainName of chainDirectories) {
     let chainId;
