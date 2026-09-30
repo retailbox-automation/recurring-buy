@@ -11,7 +11,7 @@
   },
   "scripts": {
     "format": "yarn next:format && yarn hardhat:format",
-    "gate:local": "bash tools/gate/local-gate.sh",
+    "gate:local": "bash tools/gate/local-gate.sh --local yarn",
     "gate:manifest": "node tools/gate/validate-template-json.mjs",
     "gate:secrets": "node tools/gate/scan-secrets.mjs --tree . --history .",
     "gate:test": "node --test tools/gate/gate.test.mjs",

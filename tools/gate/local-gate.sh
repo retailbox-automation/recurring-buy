@@ -5,7 +5,13 @@
 #
 # Usage:
 #   tools/gate/local-gate.sh <owner/repo[#ref]> [yarn|npm] [--strict]
+#   tools/gate/local-gate.sh --local [yarn|npm] [--strict]
 #
+#   --local    gate the last commit of the repository that holds this script,
+#              before it is pushed: the CLI copies it in through its
+#              CREATE_SCAFFOLD_HBAR_TEMPLATE_DIR option instead of downloading.
+#              Checks that need GitHub (default branch, GitHub's licence
+#              detection, the CLI reading template.json) are skipped.
 #   --strict   also fail when G6 (testnet transaction link in README) is missing.
 #              Without it G6 is reported as PENDING while the template is being built.
 #
@@ -23,10 +29,15 @@
 
 set -uo pipefail
 
-usage() { sed -n '2,24p' "$0" | sed 's/^# \{0,1\}//'; exit 2; }
+usage() { sed -n '2,28p' "$0" | sed 's/^# \{0,1\}//'; exit 2; }
 
 [[ $# -ge 1 ]] || usage
+LOCAL=0
 TEMPLATE_REF="$1"
+if [[ "$TEMPLATE_REF" == "--local" ]]; then
+  LOCAL=1
+  TEMPLATE_REF="local/HEAD" # the CLI wants owner/repo; the files come from CREATE_SCAFFOLD_HBAR_TEMPLATE_DIR
+fi
 PM="${2:-yarn}"
 STRICT=0
 [[ "${3:-}" == "--strict" || "${2:-}" == "--strict" ]] && STRICT=1
@@ -94,23 +105,32 @@ fi
 
 echo "gate: $OWNER/$REPO#$REF · package manager $PM · create-scaffold-hbar@$CLI_VERSION · node $(node -v) · npm $(npm -v)"
 
-# ---- source: clone the repository as GitHub serves it --------------------------------------------
+# ---- source: the repository as GitHub serves it, or with --local the last local commit -------------
 t0=$SECONDS
 PRIVATE=false
-if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
-  PRIVATE="$(gh api "repos/$OWNER/$REPO" --jq .private 2>/dev/null || echo unknown)"
-  gh repo clone "$OWNER/$REPO" "$WORK/src.git" -- --bare --quiet >"$LOGS/clone.log" 2>&1
+if [[ $LOCAL -eq 1 ]]; then
+  HISTORY_DIR="$(git -C "$GATE_DIR" rev-parse --show-toplevel)"
+  SHA="$(git -C "$HISTORY_DIR" rev-parse HEAD)"
+  DEFAULT_BRANCH=""
+  mkdir -p "$SRC" && git -C "$HISTORY_DIR" archive "$SHA" | tar -x -C "$SRC"
+  echo "source: $SHA, the last commit in $HISTORY_DIR ($(git -C "$HISTORY_DIR" status --porcelain | wc -l | tr -d ' ') uncommitted paths left out) in $((SECONDS - t0))s"
 else
-  git clone --bare --quiet "https://github.com/$OWNER/$REPO.git" "$WORK/src.git" >"$LOGS/clone.log" 2>&1
+  HISTORY_DIR="$WORK/src.git"
+  if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
+    PRIVATE="$(gh api "repos/$OWNER/$REPO" --jq .private 2>/dev/null || echo unknown)"
+    gh repo clone "$OWNER/$REPO" "$HISTORY_DIR" -- --bare --quiet >"$LOGS/clone.log" 2>&1
+  else
+    git clone --bare --quiet "https://github.com/$OWNER/$REPO.git" "$HISTORY_DIR" >"$LOGS/clone.log" 2>&1
+  fi
+  if ! SHA="$(git -C "$HISTORY_DIR" rev-parse --verify --quiet "$REF^{commit}")"; then
+    cat "$LOGS/clone.log" >&2
+    echo "cannot resolve $OWNER/$REPO#$REF — nothing to gate" >&2
+    exit 1
+  fi
+  DEFAULT_BRANCH="$(git -C "$HISTORY_DIR" symbolic-ref --short HEAD 2>/dev/null)"
+  mkdir -p "$SRC" && git -C "$HISTORY_DIR" archive "$SHA" | tar -x -C "$SRC"
+  echo "source: $SHA (default branch: $DEFAULT_BRANCH, private: $PRIVATE) in $((SECONDS - t0))s"
 fi
-if ! SHA="$(git -C "$WORK/src.git" rev-parse --verify --quiet "$REF^{commit}")"; then
-  cat "$LOGS/clone.log" >&2
-  echo "cannot resolve $OWNER/$REPO#$REF — nothing to gate" >&2
-  exit 1
-fi
-DEFAULT_BRANCH="$(git -C "$WORK/src.git" symbolic-ref --short HEAD 2>/dev/null)"
-mkdir -p "$SRC" && git -C "$WORK/src.git" archive "$SHA" | tar -x -C "$SRC"
-echo "source: $SHA (default branch: $DEFAULT_BRANCH, private: $PRIVATE) in $((SECONDS - t0))s"
 
 # ---- G2: template.json valid for the CLI, and served from the branch the CLI reads ----------------
 t0=$SECONDS
@@ -120,7 +140,7 @@ if node "$GATE_DIR/validate-template-json.mjs" "$SRC/template.json" >"$LOGS/mani
 else
   G2_STATUS=FAIL; G2_NOTE="$(tail -n 3 "$LOGS/manifest.log" | tr '\n' ' ')"
 fi
-if [[ "$DEFAULT_BRANCH" != "main" ]]; then
+if [[ $LOCAL -eq 0 && "$DEFAULT_BRANCH" != "main" ]]; then
   G2_STATUS=FAIL; G2_NOTE="$G2_NOTE default branch is '$DEFAULT_BRANCH': the CLI reads template.json from main"
 fi
 G2_SECONDS=$((SECONDS - t0))
@@ -129,7 +149,11 @@ DEFAULT_FW="$(node -e 'try{const m=require(process.argv[1]);console.log(m["creat
 # ---- G1: scaffold -----------------------------------------------------------------------------------
 SCAFFOLD_ARGS=(app --template "$TEMPLATE_REF" --ci --skip-hedera-skills --package-manager "$PM")
 SCAFFOLD_ENV=()
-if [[ "$PRIVATE" != "false" ]]; then
+if [[ $LOCAL -eq 1 ]]; then
+  # The CLI reads capabilities from GitHub, which has no local/HEAD: pass the manifest's framework.
+  [[ -n "$DEFAULT_FW" ]] && SCAFFOLD_ARGS+=(-s "$DEFAULT_FW")
+  SCAFFOLD_ENV+=("CREATE_SCAFFOLD_HBAR_TEMPLATE_DIR=$SRC")
+elif [[ "$PRIVATE" != "false" ]]; then
   # The CLI fetches template.json anonymously, so a private repository falls back to CLI
   # defaults (Foundry). Pass the manifest's framework and a download token instead; the
   # "manifest applied" check below is skipped because it cannot be observed here.
@@ -157,10 +181,12 @@ if [[ $SCAFFOLD_OK -eq 1 && "$PRIVATE" == "false" && -n "$DEFAULT_FW" ]]; then
   else
     G2_STATUS=FAIL; G2_NOTE="$G2_NOTE CLI ignored the manifest: packages/$DEFAULT_FW missing"
   fi
+elif [[ $LOCAL -eq 1 ]]; then
+  G2_NOTE="$G2_NOTE manifest-applied check skipped (--local: the CLI reads template.json from GitHub)"
 elif [[ "$PRIVATE" != "false" ]]; then
   G2_NOTE="$G2_NOTE manifest-applied check skipped (private repo: CLI reads template.json anonymously)"
 fi
-record G2 "template.json valid (CLI 0.4.0 schema) on branch main" "$G2_STATUS" "$G2_SECONDS" "$G2_NOTE"
+record G2 "template.json valid (CLI 0.4.0 schema)$([[ $LOCAL -eq 1 ]] || echo ' on branch main')" "$G2_STATUS" "$G2_SECONDS" "$G2_NOTE"
 
 if [[ $SCAFFOLD_OK -eq 1 ]]; then
   # ---- G3 -------------------------------------------------------------------------------------------
@@ -236,7 +262,8 @@ if [[ $SCAFFOLD_OK -eq 1 ]]; then
   fi
 
   # ---- G6: verifiable testnet transaction link --------------------------------------------------------
-  if grep -Eq 'hashscan\.io/testnet/(transaction|tx)/|testnet\.mirrornode\.hedera\.com/api/v1/transactions/' "$APP/README.md" 2>/dev/null; then
+  # A real id after the path: a template such as .../transaction/<timestamp> in the prose does not count.
+  if grep -Eq 'hashscan\.io/testnet/(transaction|tx)/[0-9]|testnet\.mirrornode\.hedera\.com/api/v1/transactions/[0-9]' "$APP/README.md" 2>/dev/null; then
     record G6 "testnet transaction link (Hashscan or mirror node) in README" PASS 0
   elif [[ $STRICT -eq 1 ]]; then
     record G6 "testnet transaction link (Hashscan or mirror node) in README" FAIL 0 "no link yet"
@@ -251,7 +278,7 @@ fi
 started=$SECONDS
 g7_note=""
 TREE_DIR="$APP"; [[ $SCAFFOLD_OK -eq 1 ]] || TREE_DIR="$SRC"
-if node "$GATE_DIR/scan-secrets.mjs" --tree "$TREE_DIR" --history "$WORK/src.git" >"$LOGS/secrets.log" 2>&1; then
+if node "$GATE_DIR/scan-secrets.mjs" --tree "$TREE_DIR" --history "$HISTORY_DIR" >"$LOGS/secrets.log" 2>&1; then
   G7_STATUS=PASS
 else
   G7_STATUS=FAIL
@@ -261,7 +288,7 @@ g7_note="$(head -n 1 "$LOGS/secrets.log")"
 if command -v gitleaks >/dev/null 2>&1; then
   GITLEAKS_ARGS=(git --no-banner --redact --log-opts=--all)
   [[ -f "$SRC/.gitleaks.toml" ]] && GITLEAKS_ARGS+=(--config "$SRC/.gitleaks.toml")
-  if gitleaks "${GITLEAKS_ARGS[@]}" "$WORK/src.git" >"$LOGS/gitleaks.log" 2>&1; then
+  if gitleaks "${GITLEAKS_ARGS[@]}" "$HISTORY_DIR" >"$LOGS/gitleaks.log" 2>&1; then
     g7_note="$g7_note; gitleaks $(gitleaks version): no leaks in history"
   else
     G7_STATUS=FAIL; g7_note="$g7_note; gitleaks reported leaks"; cat "$LOGS/gitleaks.log" >&2
@@ -280,7 +307,9 @@ if [[ -f "$SRC/LICENSE" ]] && head -n 3 "$SRC/LICENSE" | grep -q "^MIT License" 
 else
   G8_STATUS=FAIL; g8_note="LICENSE missing or not the MIT text"
 fi
-if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
+if [[ $LOCAL -eq 1 ]]; then
+  g8_note="$g8_note GitHub's licence detection skipped (--local)"
+elif command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
   spdx="$(gh api "repos/$OWNER/$REPO/license" --jq .license.spdx_id 2>/dev/null || echo none)"
   g8_note="$g8_note GitHub detects: $spdx"
   [[ "$spdx" == "MIT" ]] || G8_STATUS=FAIL

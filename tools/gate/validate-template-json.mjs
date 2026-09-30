@@ -11,6 +11,7 @@
 // (https://github.com/hedera-dev/create-scaffold-hbar, tag v0.4.0, commit 5732f5e).
 // create-scaffold-hbar is MIT licensed. Keep this copy in sync when the CLI's
 // schema changes; the CLI version it mirrors is printed on every run.
+// 0.4.1 did not touch src/types.ts: its only change is to Foundry library installs.
 //
 // Usage: node tools/gate/validate-template-json.mjs [path/to/template.json]
 // Packages are looked up next to the manifest (packages/<framework>/package.json).

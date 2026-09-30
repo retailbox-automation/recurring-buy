@@ -108,11 +108,12 @@ yarn lint && yarn next:check-types && yarn hardhat:check-types
 yarn gate:test                                   # gate tools: every check has a must-fail twin
 yarn gate:manifest                               # template.json vs the create-scaffold-hbar schema
 yarn gate:secrets                                # secrets and .env in the tree and git history
-bash tools/gate/local-gate.sh <owner/repo[#branch]> <package-manager>   # full gate on a fresh scaffold (about 2 min)
+yarn gate:local                                  # full gate on a fresh scaffold of the last local commit
+bash tools/gate/local-gate.sh <owner/repo[#branch]> <package-manager>   # the same from GitHub, e.g. for the npm leg
 npx hedera-harness validate                      # install, lint, build, test, then renders core routes
 ```
 
-`local-gate.sh` reads the template from GitHub, so push the branch first and pass it as `owner/repo#branch`.
+`yarn gate:local` gates committed work only: commit first. Given `owner/repo#branch`, `local-gate.sh` reads the template from GitHub instead, which also checks the default branch and GitHub's licence detection.
 
 ## Hedera Harness
 
