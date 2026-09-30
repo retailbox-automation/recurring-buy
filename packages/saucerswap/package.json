@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "SaucerSwap V2 client for Hedera scaffold-hbar templates: quotes, swap calldata, HTS token association, gas helpers.",
+  "description": "SaucerSwap V2 client for Hedera scaffold-hbar templates: quotes, swap calldata, HTS token association, wrapping HBAR into WHBAR, a swap gas limit.",
   "main": "dist/cjs/index.js",
   "types": "dist/cjs/index.d.ts",
   "exports": {
