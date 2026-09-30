@@ -6,7 +6,7 @@ All gas figures are from this template's contract on Hedera testnet on 2026-09-3
 
 The README lists the five transactions and the gas each used ([Start a plan](../README.md#start-a-plan-what-you-sign-and-what-it-costs)). Two of them take more HBAR than their gas: the wrap also spends the HBAR it wraps, and `start` carries the gas deposit. The approval lets the contract take up to the plan's total, one buy at a time, and plans of one owner on the same token share it.
 
-The token you buy is associated even if your account associates tokens automatically: an automatic association inside a tick's swap adds about 760,000 gas, more than a tick leaves for its swap (D3). WHBAR is associated before a wrap because SaucerSwap asks for it, and a wrap into an associated account used 77,966 gas against 771,256 for one that took an automatic association (D2, G1).
+The token you buy is associated even if your account associates tokens automatically: an automatic association inside a tick's swap adds about 760,000 gas, more than a tick leaves for its swap (D3). WHBAR is associated before a wrap because SaucerSwap asks for it, and a wrap into an associated account used 77,966 gas against 771,256 for one that took an automatic association (D2, G1). Any other spend token the account is not associated with gets the same step, before the approval.
 
 The extra gas of the first plan on a contract for a given spend token pays for the contract associating itself with that token, reading the token's supply from the Token Service and approving SaucerSwap's router for as much as the token allows, once.
 

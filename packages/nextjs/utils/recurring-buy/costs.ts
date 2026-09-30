@@ -60,7 +60,7 @@ export function walletState(
  * The transactions a person signs to start a plan that spends `need` of the spend token in total, in order. The buy
  * token is associated even when the account would associate it automatically: an automatic association during a tick
  * costs more gas than the tick leaves for its swap (D3). WHBAR can be wrapped from HBAR here, after associating it,
- * which SaucerSwap asks for before a deposit (D2).
+ * which SaucerSwap asks for before a deposit (D2). Any other spend token is associated before its approval.
  */
 export function stepsToSign({
   spendIsWhbar,
@@ -80,10 +80,10 @@ export function stepsToSign({
 
   if (wallet.associatedOut !== true) add("associate-out", MEASURED_GAS.associate, wallet.associatedOut !== undefined);
   const shortfall = wallet.balanceIn === undefined ? need : need - wallet.balanceIn;
-  if (spendIsWhbar && shortfall > 0n) {
-    if (wallet.associatedIn !== true) add("associate-in", MEASURED_GAS.associate, wallet.associatedIn !== undefined);
-    add("wrap", MEASURED_GAS.wrap, wallet.balanceIn !== undefined, shortfall);
-  }
+  const wrap = spendIsWhbar && shortfall > 0n;
+  if ((wrap || !spendIsWhbar) && wallet.associatedIn !== true)
+    add("associate-in", MEASURED_GAS.associate, wallet.associatedIn !== undefined);
+  if (wrap) add("wrap", MEASURED_GAS.wrap, wallet.balanceIn !== undefined, shortfall);
   if (wallet.allowance === undefined || wallet.allowance < need)
     add("approve", MEASURED_GAS.approve, wallet.allowance !== undefined);
   add("start", MEASURED_GAS.start + (tokenReady === false ? MEASURED_GAS.prepareToken : 0n), true);

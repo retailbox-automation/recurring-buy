@@ -66,7 +66,7 @@ On `/plans/new` you fill in the pair, the amount per buy, the period, the number
 | # | Transaction | Gas on testnet |
 | --- | --- | --- |
 | 1 | Associate the token you buy (HIP-719), even if your account associates tokens automatically | 726,488 gas, 0.79 HBAR |
-| 2 | Associate WHBAR, if you need to wrap some | 726,488 gas, 0.79 HBAR |
+| 2 | Associate the token you spend: WHBAR before a wrap, any other token before the approval | 726,488 gas, 0.79 HBAR |
 | 3 | Wrap HBAR into WHBAR through SaucerSwap's WhbarHelper, as much as the plan is short of | 77,966 gas, 0.085 HBAR |
 | 4 | Approve the contract for the plan's total on the token you spend | 727,032 gas, 0.79 HBAR |
 | 5 | Start the plan and pay its gas deposit | 1,637,955 gas, 1.79 HBAR; 1,476,561 gas more for the first plan on a spend token |

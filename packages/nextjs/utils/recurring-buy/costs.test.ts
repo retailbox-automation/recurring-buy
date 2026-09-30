@@ -76,9 +76,22 @@ describe("stepsToSign", () => {
       spendIsWhbar: false,
       need: NEED,
       tokenReady: true,
-      wallet: { associatedOut: false, associatedIn: false, balanceIn: 0n, allowance: 0n },
+      wallet: { associatedOut: false, associatedIn: true, balanceIn: 0n, allowance: 0n },
     });
     assert.deepEqual(kinds(steps), ["associate-out", "approve", "start"]);
+  });
+
+  it("asks for an association with a spend token other than WHBAR that the account is not associated with", () => {
+    // The form approves only from an associated account, and no wrap step brings one for a token other than WHBAR.
+    const steps = stepsToSign({
+      spendIsWhbar: false,
+      need: NEED,
+      tokenReady: true,
+      wallet: { associatedOut: true, associatedIn: false, balanceIn: 0n, allowance: 0n },
+    });
+    assert.deepEqual(kinds(steps), ["associate-in", "approve", "start"]);
+    assert.equal(steps[0].gas, MEASURED_GAS.associate);
+    assert.equal(steps[0].ifNeeded, false);
   });
 
   it("before the wallet is read, lists every step that may be needed as such", () => {

@@ -633,7 +633,7 @@ const PlanBuilder = ({ network, contract }: { network: RecurringBuyNetwork; cont
             <Step
               n={showWrap ? 3 : 2}
               title={`Allow the contract to take ${inSymbol}`}
-              state={allowanceDone ? "done" : ready && inAssociated ? "todo" : "blocked"}
+              state={allowanceDone ? "done" : ready && (inAssociated || !showWrap) ? "todo" : "blocked"}
             >
               <p className="m-0 text-sm text-base-content/70">
                 Current allowance: {allowance !== undefined ? formatToken(allowance, tokenIn!, inInfo) : "…"}
@@ -649,6 +649,20 @@ const PlanBuilder = ({ network, contract }: { network: RecurringBuyNetwork; cont
                     ? "Could not read your other plans, which share this allowance. Reload to try again."
                     : "Reading your other plans, which share this allowance…"}
                 </p>
+              )}
+              {!allowanceDone && !inAssociated && !showWrap && tokenIn && (
+                <div className="flex flex-wrap items-center gap-3">
+                  <button
+                    className="btn btn-sm btn-primary"
+                    disabled={busy !== null}
+                    onClick={() => associate("associate-in", tokenIn)}
+                  >
+                    {busy === "associate-in" ? "Associating…" : `Associate ${inSymbol}`}
+                  </button>
+                  <span className="text-sm text-base-content/70">
+                    First, so your account can hold {inSymbol} and approve the contract on it.
+                  </span>
+                </div>
               )}
               {!allowanceDone && (
                 <button
