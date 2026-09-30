@@ -206,7 +206,7 @@ const PlanBuilder = ({ network, contract }: { network: RecurringBuyNetwork; cont
   const reservePerTick = reserveGasPrice !== undefined ? tickGasLimit * reserveGasPrice : undefined;
   const deposit = reservePerTick !== undefined ? reservePerTick * ticks : undefined;
 
-  const { data: gasPrice } = useGasPrice(network);
+  const { data: gasPrice, isError: gasPriceFailed } = useGasPrice(network);
 
   const account = useMirrorAccount(
     network,
@@ -492,6 +492,12 @@ const PlanBuilder = ({ network, contract }: { network: RecurringBuyNetwork; cont
                   wallet shows a higher maximum fee: each gas limit is the estimate plus 20%, at the relay&apos;s price,
                   which includes its margin. The network bills the gas used.
                 </p>
+                {!gasPrice && gasPriceFailed && (
+                  <p className="m-0 mt-1 text-xs text-warning">
+                    Gas price unavailable: the mirror node&apos;s /network/fees did not answer, so the transactions and
+                    the tick are shown in gas only.
+                  </p>
+                )}
               </dd>
               <dt className="text-base-content/60">Gas per tick</dt>
               <dd className="m-0">
