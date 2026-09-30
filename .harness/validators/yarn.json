@@ -7,16 +7,21 @@
     { "name": "install", "command": "yarn install", "timeoutMs": 600000, "purpose": "Install workspace dependencies." },
     {
       "name": "lint",
-      "command": "yarn next:lint --max-warnings=0 && yarn hardhat:lint --max-warnings=0",
+      "command": "yarn next:lint --max-warnings=0 && if [ -d packages/hardhat ]; then yarn hardhat:lint --max-warnings=0; else yarn foundry:lint; fi",
       "timeoutMs": 300000,
-      "purpose": "Lint both packages with zero warnings allowed."
+      "purpose": "Lint the app and the contracts package, Hardhat or Foundry, whichever the project has. ESLint allows zero warnings."
     },
     {
       "name": "build",
-      "command": "yarn hardhat:compile && yarn next:build",
+      "command": "if [ -d packages/hardhat ]; then yarn hardhat:compile; else yarn foundry:compile; fi && yarn next:build",
       "timeoutMs": 600000,
       "purpose": "Compile contracts and build the Next.js app (includes type checks)."
     },
-    { "name": "test", "command": "yarn hardhat:test", "timeoutMs": 600000, "purpose": "Contract tests." }
+    {
+      "name": "test",
+      "command": "if [ -d packages/hardhat ]; then yarn hardhat:test; else yarn foundry:test; fi",
+      "timeoutMs": 600000,
+      "purpose": "Contract tests."
+    }
   ]
 }

@@ -4,7 +4,7 @@
   "create-scaffold-hbar": {
     "capabilities": {
       "frontend": ["nextjs-app"],
-      "solidityFramework": ["hardhat"],
+      "solidityFramework": ["hardhat", "foundry"],
       "packageManager": ["yarn", "npm"]
     },
     "defaults": {
