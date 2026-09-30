@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { PlanDetails } from "./PlanDetails";
 import { ExternalLink, Panel, formatHbar, formatPeriod, formatToken } from "./common";
-import { associateCalldata, hederaIdToLongZeroAddress, minOut } from "@sh/saucerswap";
+import { associateCalldata, buildWrapHbar, hederaIdToLongZeroAddress, minOut, tinybarToWeibar } from "@sh/saucerswap";
 import { erc20Abi, formatUnits, getAddress, isAddress, parseEventLogs, parseUnits } from "viem";
 import {
   useAccount,
@@ -15,6 +15,7 @@ import {
   useWriteContract,
 } from "wagmi";
 import {
+  type MirrorAccount,
   type RecurringBuyNetwork,
   defaultRoute,
   useGasPrice,
@@ -28,7 +29,7 @@ import {
 } from "~~/hooks/recurring-buy/useRecurringBuy";
 import { useTransactor } from "~~/hooks/scaffold-hbar";
 import { recurringBuyAbi } from "~~/utils/recurring-buy/abi";
-import { tickCost } from "~~/utils/recurring-buy/costs";
+import { type SignStep, gasLimitFor, stepsToSign, tickCost } from "~~/utils/recurring-buy/costs";
 import { type PlanParams, ticksRun } from "~~/utils/recurring-buy/plan";
 
 /**
@@ -36,8 +37,8 @@ import { type PlanParams, ticksRun } from "~~/utils/recurring-buy/plan";
  * on testnet (docs/testnet-findings.md, E4); the contract keeps RESCHEDULE_GAS of it back for the next schedule.
  */
 const TICK_GAS_LIMIT = 1_900_000n;
-/** JSON-RPC counts HBAR in weibar (18 decimals), the EVM and the contract in tinybar (8). */
-const WEIBAR_PER_TINYBAR = 10_000_000_000n;
+/** HBAR and WHBAR both have 8 decimals. */
+const HBAR_DECIMALS = 8;
 
 const PERIOD_UNITS = { minutes: 60, hours: 3600, days: 86_400, weeks: 604_800 } as const;
 type PeriodUnit = keyof typeof PERIOD_UNITS;
@@ -137,7 +138,7 @@ const Unavailable = ({ network }: { network: RecurringBuyNetwork }) => (
   </Panel>
 );
 
-/** Form, cost disclosure and the three transactions that start a plan: association, allowance, start. */
+/** Form, cost disclosure and the transactions that start a plan: associations, WHBAR, allowance, start. */
 export const NewPlanForm = () => {
   const network = useRecurringBuyNetwork();
   if (!network.mirror || !network.contract) return <Unavailable network={network} />;
@@ -157,8 +158,11 @@ const PlanBuilder = ({ network, contract }: { network: RecurringBuyNetwork; cont
   const [form, setForm] = useState<Form>(() => initialForm(chainId));
   const set = (field: keyof Form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setForm(current => ({ ...current, [field]: e.target.value }));
-  const [busy, setBusy] = useState<"associate" | "approve" | "start" | null>(null);
+  const [busy, setBusy] = useState<SignStep["kind"] | null>(null);
   const [createdPlanId, setCreatedPlanId] = useState<bigint | null>(null);
+  // What the person typed into the wrap amount; null shows what the plan is short of.
+  const [wrapInput, setWrapInput] = useState<string | null>(null);
+  const [wrapped, setWrapped] = useState(false);
 
   // ---- what the form describes -------------------------------------------------------------------------------
   const tokenIn = toTokenAddress(form.tokenIn);
@@ -174,10 +178,11 @@ const PlanBuilder = ({ network, contract }: { network: RecurringBuyNetwork; cont
   const floorBps = Number.isFinite(floorPercent) ? Math.round(floorPercent * 100) : -1;
   const floorValid = floorBps >= 0 && floorBps < 10_000;
   const route = tokenIn && tokenOut && tokenIn !== tokenOut ? { tokenIn, fee, tokenOut } : null;
-  const quote = useQuote(chainId, route, amountPerTick);
+  const quote = useQuote(network, route, amountPerTick);
   const minAmountOut =
     quote.data && floorValid && quote.data.amountOut > 0n ? minOut(quote.data.amountOut, floorBps) : 0n;
   const total = amountPerTick * ticks;
+  const spendIsWhbar = Boolean(tokenIn && tokenIn.toLowerCase() === network.saucerSwap?.whbar.toLowerCase());
 
   // ---- contract and wallet state -----------------------------------------------------------------------------
   const { data: contractState } = useReadContracts({
@@ -231,10 +236,29 @@ const PlanBuilder = ({ network, contract }: { network: RecurringBuyNetwork; cont
   // Until the owner's other plans are read, what they still need from the allowance is unknown.
   const sharingKnown = ownerPlans.isSuccess || !address;
 
-  // Undefined while the account loads; 0 when the account does not hold the token at all.
-  const inBalance = tokenIn && account.data ? (account.data.tokens[tokenIn.toLowerCase()] ?? 0n) : undefined;
-  const outAssociated = tokenOut ? account.data?.tokens[tokenOut.toLowerCase()] !== undefined : false;
-  const autoAssociates = account.data?.maxAutoAssociations === -1;
+  // Undefined while the account loads; a token missing from `tokens` is not associated.
+  const held = account.data?.tokens ?? {};
+  const inBalance = tokenIn && account.data ? (held[tokenIn.toLowerCase()] ?? 0n) : undefined;
+  const inAssociated = Boolean(tokenIn && held[tokenIn.toLowerCase()] !== undefined);
+  const outAssociated = Boolean(tokenOut && held[tokenOut.toLowerCase()] !== undefined);
+
+  const steps = stepsToSign({
+    spendIsWhbar,
+    need: neededAllowance,
+    tokenReady,
+    wallet:
+      address && account.data
+        ? {
+            holdsOut: outAssociated,
+            holdsIn: inAssociated,
+            balanceIn: inBalance,
+            allowance: sharingKnown ? allowance : undefined,
+          }
+        : {},
+  });
+  const shortfall = address && account.data ? (steps.find(step => step.kind === "wrap")?.amount ?? 0n) : 0n;
+  const showWrap = spendIsWhbar && (shortfall > 0n || wrapped);
+  const wrapAmount = wrapInput === null ? shortfall : parseAmount(wrapInput, HBAR_DECIMALS);
 
   // ---- validation --------------------------------------------------------------------------------------------
   const problems: string[] = [];
@@ -248,7 +272,6 @@ const PlanBuilder = ({ network, contract }: { network: RecurringBuyNetwork; cont
   if (quote.isError) problems.push("SaucerSwap has no pool with liquidity for this pair, fee and amount.");
 
   const ready = problems.length === 0 && minAmountOut > 0n && deposit !== undefined;
-  const associationDone = outAssociated || autoAssociates;
   const allowanceDone = allowance !== undefined && ready && sharingKnown && allowance >= neededAllowance;
   const hasSlice = inBalance !== undefined && inBalance >= amountPerTick;
 
@@ -264,7 +287,7 @@ const PlanBuilder = ({ network, contract }: { network: RecurringBuyNetwork; cont
   };
 
   // ---- transactions ------------------------------------------------------------------------------------------
-  const run = async (step: NonNullable<typeof busy>, send: () => Promise<`0x${string}`>, after?: () => unknown) => {
+  const run = async (step: SignStep["kind"], send: () => Promise<`0x${string}`>, after?: () => unknown) => {
     setBusy(step);
     try {
       await writeTx(send);
@@ -276,16 +299,43 @@ const PlanBuilder = ({ network, contract }: { network: RecurringBuyNetwork; cont
     }
   };
 
-  const associate = () =>
+  // The mirror node shows a transaction a few seconds after its receipt.
+  const refetchAccountUntil = async (shows: (data: MirrorAccount | null | undefined) => boolean) => {
+    for (let attempt = 0; attempt < 6; attempt++) {
+      const { data } = await account.refetch();
+      if (shows(data)) return;
+      await new Promise(resolve => setTimeout(resolve, 3000));
+    }
+  };
+
+  const associate = (step: "associate-out" | "associate-in", token: string) =>
     run(
-      "associate",
+      step,
       async () => {
-        const request = { account: address!, to: tokenOut!, data: associateCalldata() };
-        const gas = ((await publicClient!.estimateGas(request)) * 12n) / 10n;
-        return sendTransactionAsync({ to: tokenOut!, data: request.data, gas, chainId, ...(await fees()) });
+        const request = { account: address!, to: token, data: associateCalldata() };
+        const gas = gasLimitFor(await publicClient!.estimateGas(request));
+        return sendTransactionAsync({ to: token, data: request.data, gas, chainId, ...(await fees()) });
       },
-      () => account.refetch(),
+      () => refetchAccountUntil(data => data?.tokens[token.toLowerCase()] !== undefined),
     );
+
+  const wrap = () => {
+    const before = inBalance ?? 0n;
+    return run(
+      "wrap",
+      async () => {
+        const request = { account: address!, ...buildWrapHbar(network.saucerSwap!, wrapAmount) };
+        const gas = gasLimitFor(await publicClient!.estimateGas(request));
+        const { to, data, value } = request;
+        return sendTransactionAsync({ to, data, value, gas, chainId, ...(await fees()) });
+      },
+      async () => {
+        setWrapped(true);
+        setWrapInput(null);
+        await refetchAccountUntil(data => (data?.tokens[tokenIn!.toLowerCase()] ?? 0n) > before);
+      },
+    );
+  };
 
   const approve = () =>
     run(
@@ -298,7 +348,7 @@ const PlanBuilder = ({ network, contract }: { network: RecurringBuyNetwork; cont
           functionName: "approve",
           args: [contract, neededAllowance],
         } as const;
-        const gas = ((await publicClient!.estimateContractGas(request)) * 12n) / 10n;
+        const gas = gasLimitFor(await publicClient!.estimateContractGas(request));
         return writeContractAsync({ ...request, gas, chainId, ...(await fees()) });
       },
       () => refetchAllowance(),
@@ -312,9 +362,9 @@ const PlanBuilder = ({ network, contract }: { network: RecurringBuyNetwork; cont
         abi: recurringBuyAbi,
         functionName: "start",
         args: [params],
-        value: deposit! * WEIBAR_PER_TINYBAR,
+        value: tinybarToWeibar(deposit!),
       } as const;
-      const gas = ((await publicClient!.estimateContractGas(request)) * 12n) / 10n;
+      const gas = gasLimitFor(await publicClient!.estimateContractGas(request));
       const hash = await writeContractAsync({ ...request, gas, chainId, ...(await fees()) });
       const receipt = await publicClient!.waitForTransactionReceipt({ hash });
       if (receipt.status === "success") {
@@ -328,6 +378,26 @@ const PlanBuilder = ({ network, contract }: { network: RecurringBuyNetwork; cont
 
   const inSymbol = inInfo?.symbol ?? "token";
   const outSymbol = outInfo?.symbol ?? "token";
+
+  const stepLabel = (step: SignStep): string => {
+    switch (step.kind) {
+      case "associate-out":
+        return `Associate ${outSymbol}, so your account can receive it`;
+      case "associate-in":
+        return `Associate ${inSymbol}, so your account can hold it`;
+      case "wrap":
+        return step.ifNeeded
+          ? `Wrap HBAR into ${inSymbol}, as much as you are short of`
+          : `Wrap ${formatHbar(step.amount ?? 0n)} into ${inSymbol}`;
+      case "approve":
+        return `Approve the contract for ${formatToken(neededAllowance, tokenIn!, inInfo)}`;
+      case "start":
+        return tokenReady === false
+          ? `Start the plan and pay its gas deposit. The first plan on ${inSymbol} also has the contract associate it and approve SaucerSwap's router`
+          : "Start the plan and pay its gas deposit";
+    }
+  };
+  const gasTotal = steps.reduce((sum, step) => sum + step.gas, 0n);
 
   return (
     <div className="flex flex-col gap-6">
@@ -412,6 +482,24 @@ const PlanBuilder = ({ network, contract }: { network: RecurringBuyNetwork; cont
                 up to {formatToken(total, tokenIn!, inInfo)} in total, taken one buy at a time. Revoke any time by
                 approving 0.
               </dd>
+              <dt className="text-base-content/60">Transactions</dt>
+              <dd className="m-0">
+                <ol className="m-0 pl-5 list-decimal flex flex-col gap-1" data-testid="transactions">
+                  {steps.map(step => (
+                    <li key={step.kind}>
+                      {stepLabel(step)}: {step.gas.toLocaleString()} gas
+                      {gasPrice && <>, about {formatHbar(step.gas * gasPrice.ethereumTransaction)}</>}
+                      {step.ifNeeded && <span className="text-base-content/60"> (skipped if already done)</span>}
+                    </li>
+                  ))}
+                </ol>
+                <p className="m-0 mt-1 text-xs text-base-content/60">
+                  {gasPrice ? `About ${formatHbar(gasTotal * gasPrice.ethereumTransaction)} of gas in all` : "Gas"},
+                  from what each transaction used on testnet
+                  {gasPrice && `, at the network's price now of ${gasPrice.ethereumTransaction} tinybar per gas`}. Your
+                  wallet may show a higher maximum fee: the relay adds a margin to the price.
+                </p>
+              </dd>
               <dt className="text-base-content/60">Gas per tick</dt>
               <dd className="m-0">
                 {reservePerTick !== undefined ? (
@@ -443,13 +531,6 @@ const PlanBuilder = ({ network, contract }: { network: RecurringBuyNetwork; cont
                   "…"
                 )}
               </dd>
-              <dt className="text-base-content/60">Start</dt>
-              <dd className="m-0">
-                The start transaction costs its own gas (about 1.8 HBAR on testnet)
-                {tokenReady === false &&
-                  ", plus about 1.6 HBAR once: the contract associates itself with the spend token and approves SaucerSwap's router"}
-                .
-              </dd>
             </dl>
           </div>
         )}
@@ -466,28 +547,80 @@ const PlanBuilder = ({ network, contract }: { network: RecurringBuyNetwork; cont
           </p>
         ) : (
           <ol className="flex flex-col gap-5 m-0 p-0 list-none">
-            <Step n={1} title={`Receive ${outSymbol}`} state={associationDone ? "done" : "todo"}>
-              {associationDone ? (
-                <p className="m-0 text-sm text-base-content/70">
-                  {outAssociated
-                    ? `Your account is associated with ${outSymbol}.`
-                    : "Your account associates new tokens automatically when they arrive."}
-                </p>
+            <Step n={1} title={`Receive ${outSymbol}`} state={outAssociated ? "done" : "todo"}>
+              {outAssociated ? (
+                <p className="m-0 text-sm text-base-content/70">Your account is associated with {outSymbol}.</p>
               ) : (
                 <div className="flex flex-wrap items-center gap-3">
-                  <button className="btn btn-sm btn-primary" disabled={busy !== null || !tokenOut} onClick={associate}>
-                    {busy === "associate" ? "Associating…" : `Associate ${outSymbol}`}
+                  <button
+                    className="btn btn-sm btn-primary"
+                    disabled={busy !== null || !tokenOut}
+                    onClick={() => associate("associate-out", tokenOut!)}
+                  >
+                    {busy === "associate-out" ? "Associating…" : `Associate ${outSymbol}`}
                   </button>
                   <span className="text-sm text-base-content/70">
-                    HTS tokens need an association before you can receive them (HIP-719, about 0.8 HBAR).
+                    An HTS token needs an association before you can receive it (HIP-719). Do it here even if your
+                    account associates tokens automatically: a tick has no gas to spare for that.
                   </span>
                 </div>
               )}
             </Step>
+            {showWrap && (
+              <Step n={2} title={`Get ${inSymbol}`} state={shortfall === 0n ? "done" : "todo"}>
+                <p className="m-0 text-sm text-base-content/70" data-testid="wrap-balance">
+                  A plan spends {inSymbol}, HBAR wrapped one to one. You hold{" "}
+                  {formatToken(inBalance ?? 0n, tokenIn!, inInfo)}
+                  {shortfall === 0n
+                    ? ", enough for this plan."
+                    : `; ${othersNeed > 0n ? "this plan and your other running plans on it need" : "this plan needs"} ${formatToken(neededAllowance, tokenIn!, inInfo)}.`}
+                </p>
+                {shortfall > 0n && (
+                  <>
+                    {!inAssociated && (
+                      <div className="flex flex-wrap items-center gap-3">
+                        <button
+                          className="btn btn-sm btn-primary"
+                          disabled={busy !== null}
+                          onClick={() => associate("associate-in", tokenIn!)}
+                        >
+                          {busy === "associate-in" ? "Associating…" : `Associate ${inSymbol}`}
+                        </button>
+                        <span className="text-sm text-base-content/70">First, so your account can hold it.</span>
+                      </div>
+                    )}
+                    <div className="flex flex-wrap items-center gap-3">
+                      <label className="input input-sm w-48">
+                        <input
+                          inputMode="decimal"
+                          aria-label="HBAR to wrap"
+                          value={wrapInput ?? formatUnits(shortfall, HBAR_DECIMALS)}
+                          onChange={e => setWrapInput(e.target.value)}
+                        />
+                        <span className="text-base-content/60">HBAR</span>
+                      </label>
+                      <button
+                        className="btn btn-sm btn-primary"
+                        disabled={busy !== null || !inAssociated || wrapAmount <= 0n}
+                        onClick={wrap}
+                      >
+                        {busy === "wrap"
+                          ? "Wrapping…"
+                          : `Wrap ${formatUnits(wrapAmount, HBAR_DECIMALS)} HBAR → ${inSymbol}`}
+                      </button>
+                    </div>
+                    <p className="m-0 text-xs text-base-content/60">
+                      Through SaucerSwap&apos;s WhbarHelper contract. You hold{" "}
+                      {account.data ? formatHbar(account.data.balanceTinybar) : "…"}.
+                    </p>
+                  </>
+                )}
+              </Step>
+            )}
             <Step
-              n={2}
+              n={showWrap ? 3 : 2}
               title={`Allow the contract to take ${inSymbol}`}
-              state={allowanceDone ? "done" : ready ? "todo" : "blocked"}
+              state={allowanceDone ? "done" : ready && inAssociated ? "todo" : "blocked"}
             >
               <p className="m-0 text-sm text-base-content/70">
                 Current allowance: {allowance !== undefined ? formatToken(allowance, tokenIn!, inInfo) : "…"}
@@ -507,7 +640,7 @@ const PlanBuilder = ({ network, contract }: { network: RecurringBuyNetwork; cont
               {!allowanceDone && (
                 <button
                   className="btn btn-sm btn-primary self-start"
-                  disabled={busy !== null || !ready || !sharingKnown}
+                  disabled={busy !== null || !ready || !sharingKnown || !inAssociated}
                   onClick={approve}
                 >
                   {busy === "approve"
@@ -516,7 +649,11 @@ const PlanBuilder = ({ network, contract }: { network: RecurringBuyNetwork; cont
                 </button>
               )}
             </Step>
-            <Step n={3} title="Start the plan" state={ready && allowanceDone && associationDone ? "todo" : "blocked"}>
+            <Step
+              n={showWrap ? 4 : 3}
+              title="Start the plan"
+              state={ready && allowanceDone && outAssociated ? "todo" : "blocked"}
+            >
               {inBalance !== undefined && !hasSlice && (
                 <p className="m-0 text-sm text-warning">
                   You hold {formatToken(inBalance, tokenIn!, inInfo)}, less than one buy: the first tick would stop the
@@ -530,7 +667,7 @@ const PlanBuilder = ({ network, contract }: { network: RecurringBuyNetwork; cont
               )}
               <button
                 className="btn btn-primary self-start"
-                disabled={busy !== null || !ready || !allowanceDone || !associationDone || !hasSlice}
+                disabled={busy !== null || !ready || !allowanceDone || !outAssociated || !hasSlice}
                 onClick={start}
               >
                 {busy === "start"
@@ -555,7 +692,7 @@ const PlanBuilder = ({ network, contract }: { network: RecurringBuyNetwork; cont
           </ol>
         )}
       </Panel>
-      {inBalance !== undefined && inBalance < total && hasSlice && (
+      {!showWrap && inBalance !== undefined && inBalance < total && hasSlice && (
         <p className="m-0 text-sm text-base-content/60">
           You hold {formatUnits(inBalance, inInfo?.decimals ?? 0)} {inSymbol}, enough for{" "}
           {(inBalance / amountPerTick).toString()} of {ticks.toString()} buys; the plan stops at the first tick it

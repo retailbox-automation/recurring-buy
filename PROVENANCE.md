@@ -36,7 +36,7 @@ Added:
 - `.github/workflows/gate.yml` (the same gate in CI).
 - `.gitleaks.toml` (gitleaks defaults, minus the vendored Yarn release).
 - `.harness/` (Hedera Harness v3 recipe and validators).
-- `packages/saucerswap/` (`@sh/saucerswap`): a SaucerSwap V2 client with no React in it: addresses, quotes, swap paths and calldata, HTS association, relay gas price. The app uses it for the quote, the price floor and the fees.
+- `packages/saucerswap/` (`@sh/saucerswap`): a SaucerSwap V2 client with no React in it: addresses, quotes, swap paths and calldata, HTS association, wrapping HBAR into WHBAR, relay gas price. The app uses it for the quote, the price floor and the fees.
 - `packages/hardhat/contracts/RecurringBuy.sol`, the interfaces and mocks next to it, `test/RecurringBuy.test.ts` and `deploy/00_deploy_recurring_buy.ts`.
 - `packages/nextjs`: routes `/plans/new` and `/plans`, `components/recurring-buy/`, `hooks/recurring-buy/` and `utils/recurring-buy/` with its tests and mirror node fixtures.
 - `docs/testnet-findings.md`: what our two prototype runs measured on Hedera testnet on 2026-09-24 and 2026-09-29. The prototypes themselves are not in this repository; `RecurringBuy.sol` was written anew from what they showed.

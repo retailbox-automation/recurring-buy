@@ -54,6 +54,7 @@ yarn hardhat:deploy:testnet      # deploys RecurringBuy to Hedera testnet, asks 
 | SaucerSwap V2 SwapRouter | `0.0.1414040` | `0.0.3949434` |
 | SaucerSwap V2 QuoterV2 | `0.0.1390002` | `0.0.3949424` |
 | WHBAR token | `0.0.15058` | `0.0.1456986` |
+| SaucerSwap WhbarHelper (wraps HBAR) | `0.0.5286055` | `0.0.5808826` |
 
 They are defined once, in `packages/saucerswap/src/addresses.ts`; the deploy script repeats the two router addresses. The testnet ones have carried our transactions. The mainnet ones are from SaucerSwap's documentation and have not been exercised. An HTS token's or contract's EVM address is its id as a 20-byte number: `hederaIdToLongZeroAddress("0.0.15058")`.
 
@@ -81,15 +82,16 @@ Other limits worth knowing: a second with no capacity returns `SCHEDULE_EXPIRY_I
 4. **The mirror node never marks a schedule as expired** (A7). `scheduleState` computes "missed" from the clock.
 5. **Fees through hashio come from `eth_gasPrice`** (C1): use `useHederaFees`. Fees derived from the block header are rejected. Costs shown to a person use the price the network bills, from the mirror node's `/network/fees` (`useGasPrice`): `eth_gasPrice` adds the relay's margin (C4).
 6. **The app builds and boots with no `.env`.** `tools/gate/local-gate.sh` runs `next build` and `next start` in an empty environment and requests every core route. Fetch live data on the client and show an error state when a node or API is unreachable; do not fetch at build time.
-7. Core routes are listed in `.harness/validators/playwright-smoke.yaml`. Add a route there when you add a page that matters.
-8. When the contract's ABI changes, update `utils/recurring-buy/abi.ts` for whatever the app calls or reads.
+7. **Associate before a tick needs it.** `/plans/new` asks for an explicit association of the token a plan buys, even when the account associates tokens automatically: an automatic association inside a tick's swap takes more gas than `buy` gets (D3). It also associates WHBAR before wrapping HBAR, as SaucerSwap asks (D2). The list of transactions and their gas comes from `stepsToSign` in `utils/recurring-buy/costs.ts`.
+8. Core routes are listed in `.harness/validators/playwright-smoke.yaml`. Add a route there when you add a page that matters.
+9. When the contract's ABI changes, update `utils/recurring-buy/abi.ts` for whatever the app calls or reads.
 
 ## Extending it
 
 - **Another pair or fee tier:** nothing to change in the contract. A plan names `tokenIn`, `fee` and `tokenOut`; the form accepts any HTS token id. On testnet only the WHBAR/SAUCE pool at fee 3000 is known to exist (docs/testnet-findings.md).
 - **A multi-hop path:** `buy` builds the path with `abi.encodePacked(tokenIn, fee, tokenOut)`. Store a `bytes path` in the plan instead, and raise the gas estimates in `NewPlanForm.tsx`.
 - **A different action per tick** (rebalance, claim, pay): replace the body of `buy`. Keep it a self-call that reverts on failure, keep `tick` free of anything that can fail, and keep `_chargeTick` last.
-- **Spending HBAR directly:** a tick has no HBAR of the owner's to spend; the owner must hold WHBAR. Wrapping inside the contract would mean the contract holds the owner's funds between ticks, which this design avoids.
+- **Spending HBAR directly:** a tick has no HBAR of the owner's to spend; the owner must hold WHBAR. `/plans/new` wraps HBAR into WHBAR through SaucerSwap's WhbarHelper (`buildWrapHbar` in `@sh/saucerswap`). Wrapping inside the contract would mean the contract holds the owner's funds between ticks, which this design avoids.
 
 Write the test first. Every behaviour of `tick` has a test in `RecurringBuy.test.ts`; add yours next to it.
 

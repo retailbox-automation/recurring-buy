@@ -10,6 +10,8 @@ export type SaucerSwapAddresses = {
   router: Address;
   /** SaucerSwapV2QuoterV2 — `quoteExactInput`, no gas cost. */
   quoter: Address;
+  /** WhbarHelper — `deposit()` wraps the HBAR sent with it into WHBAR for the sender. */
+  whbarHelper: Address;
 };
 
 /**
@@ -20,6 +22,7 @@ export const TESTNET_ADDRESSES: SaucerSwapAddresses = {
   whbar: "0x0000000000000000000000000000000000003ad2", // WHBAR token 0.0.15058
   router: "0x0000000000000000000000000000000000159398", // SwapRouter 0.0.1414040
   quoter: "0x00000000000000000000000000000000001535b2", // QuoterV2 0.0.1390002
+  whbarHelper: "0x000000000000000000000000000000000050a8a7", // WhbarHelper 0.0.5286055
 };
 
 /**
@@ -30,6 +33,7 @@ export const MAINNET_ADDRESSES: SaucerSwapAddresses = {
   whbar: "0x0000000000000000000000000000000000163b5a", // WHBAR token 0.0.1456986
   router: "0x00000000000000000000000000000000003c437a", // SwapRouter 0.0.3949434
   quoter: "0x00000000000000000000000000000000003c4370", // QuoterV2 0.0.3949424
+  whbarHelper: "0x000000000000000000000000000000000058a2ba", // WhbarHelper 0.0.5808826
 };
 
 export const ADDRESSES: Record<Network, SaucerSwapAddresses> = {

@@ -61,13 +61,15 @@ Deploying this contract used 2,176,533 gas, 2.37 HBAR, on testnet on 2026-09-30.
 
 ## Start a plan: what you sign and what it costs
 
-On `/plans/new` you fill in the pair, the amount per buy, the period, the number of buys and the price floor. The page shows a live quote from SaucerSwap's QuoterV2 and the costs below before you sign anything. You sign at most three transactions:
+On `/plans/new` you fill in the pair, the amount per buy, the period, the number of buys and the price floor. The page shows a live quote from SaucerSwap's QuoterV2 and the costs below before you sign anything. You sign at most five transactions, each skipped when it is already done:
 
 | # | Transaction | What it allows | Gas on testnet |
 | --- | --- | --- | --- |
-| 1 | Associate your account with the token you buy (HIP-719). Skipped if you are already associated or your account associates automatically | Lets you receive that token | 726,488 gas, 0.79 HBAR |
-| 2 | Approve the contract on the token you spend | The contract may take up to the plan's total, one buy at a time. Plans of one owner on the same token share this allowance | 727,032 gas, 0.79 HBAR |
-| 3 | Start the plan, with the gas deposit attached | Creates the plan and schedules its first tick | 1,637,955 gas, 1.79 HBAR, plus the deposit |
+| 1 | Associate your account with the token you buy (HIP-719), even if your account associates tokens automatically: a tick has no gas to spare for an automatic association | Lets you receive that token | 726,488 gas, 0.79 HBAR |
+| 2 | Associate your account with WHBAR, when you spend WHBAR and need to wrap some | Lets you hold WHBAR | 726,488 gas, 0.79 HBAR |
+| 3 | Wrap HBAR into WHBAR through SaucerSwap's WhbarHelper, as much as the plan is short of | Turns HBAR into WHBAR one to one | 77,966 gas, 0.085 HBAR, plus the HBAR you wrap |
+| 4 | Approve the contract on the token you spend | The contract may take up to the plan's total, one buy at a time. Plans of one owner on the same token share this allowance | 727,032 gas, 0.79 HBAR |
+| 5 | Start the plan, with the gas deposit attached | Creates the plan and schedules its first tick | 1,637,955 gas, 1.79 HBAR, plus the deposit |
 
 The first plan on a contract for a given spend token costs more to start: the contract associates itself with that token, reads the token's supply from the Token Service and approves SaucerSwap's router for as much as the token allows, 1,476,561 gas (1.61 HBAR) more, once.
 
@@ -83,7 +85,7 @@ Scheduling the next tick is most of a tick's gas (a tick that schedules nothing 
 
 All gas figures are from this template's contract on testnet on 2026-09-30, at 109 tinybar per gas: see run E in [docs/testnet-findings.md](docs/testnet-findings.md).
 
-To try the default pair on testnet you need WHBAR, which is HBAR wrapped by the WHBAR contract `0.0.15057`: send HBAR to its `deposit()` function.
+The default pair spends WHBAR, HBAR wrapped one to one. If you hold too little, `/plans/new` wraps HBAR for you (transactions 2 and 3; run F in the testnet notes).
 
 ## Stop a plan
 

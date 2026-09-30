@@ -5,3 +5,4 @@ export * from "./quote.js";
 export * from "./swap.js";
 export * from "./associate.js";
 export * from "./gas.js";
+export * from "./wrap.js";

@@ -11,7 +11,8 @@ const NewPlanPage = () => (
     <div className="flex flex-col gap-2">
       <h1 className="text-2xl font-bold m-0">Start a plan</h1>
       <p className="m-0 text-base-content/70">
-        Three transactions: receive the token, cap what the contract may take, then start the plan with its gas deposit.
+        Up to five transactions, each listed below with its gas: receive the token, get WHBAR if you are short of it,
+        cap what the contract may take, then start the plan with its gas deposit.
       </p>
     </div>
     <NewPlanForm />

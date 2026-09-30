@@ -3,6 +3,7 @@ import {
   ADDRESSES,
   ENDPOINTS,
   type Network,
+  type SaucerSwapAddresses,
   encodeSingleHopPath,
   hashioGasPrice,
   hederaIdToLongZeroAddress,
@@ -46,6 +47,8 @@ export type RecurringBuyNetwork = {
   mirror: Mirror | null;
   /** Hashscan for the network, e.g. https://hashscan.io/testnet. */
   explorer: string | null;
+  /** SaucerSwap V2 on the network; null where SaucerSwap is not deployed. */
+  saucerSwap: SaucerSwapAddresses | null;
 };
 
 function networkFor(chainId: number, name: string, contract: `0x${string}` | undefined): RecurringBuyNetwork {
@@ -56,6 +59,7 @@ function networkFor(chainId: number, name: string, contract: `0x${string}` | und
     contract,
     mirror: mirrorUrl ? createMirror(mirrorUrl) : null,
     explorer: CHAINS_BY_ID[chainId]?.blockExplorers?.default.url ?? null,
+    saucerSwap: SAUCERSWAP_NETWORK[chainId] ? ADDRESSES[SAUCERSWAP_NETWORK[chainId]] : null,
   };
 }
 
@@ -224,8 +228,6 @@ export function useHederaFees(chainId: number) {
 export type MirrorAccount = {
   accountId: string;
   balanceTinybar: bigint;
-  /** -1 means unlimited: tokens associate on first receipt. */
-  maxAutoAssociations: number;
   /** Balances of the associated tokens among those asked for, by lowercase long-zero address. */
   tokens: Record<string, bigint>;
 };
@@ -240,7 +242,6 @@ export function useMirrorAccount(network: RecurringBuyNetwork, address: string |
         account: string;
         deleted: boolean;
         balance: { balance: number };
-        max_automatic_token_associations: number;
       }>(`/accounts/${address}?transactions=false`);
       if (!account || account.deleted) return null;
       const held = await Promise.all(
@@ -254,7 +255,6 @@ export function useMirrorAccount(network: RecurringBuyNetwork, address: string |
       return {
         accountId: account.account,
         balanceTinybar: BigInt(account.balance.balance),
-        maxAutoAssociations: account.max_automatic_token_associations,
         tokens: Object.fromEntries(entries.map(t => [hederaIdToLongZeroAddress(t.token_id), BigInt(t.balance)])),
       };
     },
@@ -265,18 +265,18 @@ export function useMirrorAccount(network: RecurringBuyNetwork, address: string |
 
 /** SaucerSwap V2 QuoterV2's output for one slice, via `eth_call`; errors when the pool has no route or liquidity. */
 export function useQuote(
-  chainId: number,
+  network: RecurringBuyNetwork,
   route: { tokenIn: string; fee: number; tokenOut: string } | null,
   amountIn: bigint,
 ) {
+  const { chainId, saucerSwap } = network;
   const publicClient = usePublicClient({ chainId });
-  const saucerSwap = SAUCERSWAP_NETWORK[chainId];
   return useQuery({
     queryKey: ["recurring-buy", "quote", chainId, route?.tokenIn, route?.fee, route?.tokenOut, amountIn.toString()],
     queryFn: () =>
       quoteExactInput(
         publicClient!,
-        ADDRESSES[saucerSwap].quoter,
+        saucerSwap!.quoter,
         encodeSingleHopPath(route!.tokenIn as `0x${string}`, route!.fee, route!.tokenOut as `0x${string}`),
         amountIn,
       ),
