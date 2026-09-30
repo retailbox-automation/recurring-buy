@@ -270,7 +270,7 @@ export const PlanDetails = ({
         <dt className="text-base-content/60">Gas deposit</dt>
         <dd className="m-0">
           {formatHbar(plan.deposit + plan.toppedUp)} paid in
-          {onChain && <> · {formatHbar(onChain.gasDeposit)} not yet reserved</>}
+          {onChain && <> · {formatHbar(onChain.gasDeposit)} in the deposit now</>}
           {plan.refunded > 0n && <> · {formatHbar(plan.refunded)} refunded</>}
         </dd>
         <dt className="text-base-content/60">Owner</dt>

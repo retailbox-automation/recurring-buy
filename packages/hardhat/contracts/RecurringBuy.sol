@@ -3,6 +3,7 @@ pragma solidity ^0.8.28;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import { IHederaScheduleService } from "./interfaces/IHederaScheduleService.sol";
 import { IHRC719 } from "./interfaces/IHRC719.sol";
@@ -26,9 +27,11 @@ import { ISaucerSwapV2Router } from "./interfaces/ISaucerSwapV2Router.sol";
 /// Gas deposit: Hedera charges every scheduled tick to this contract, the schedule's payer, so all plans
 /// pay from one balance. Each plan therefore pre-pays its own ticks. Scheduling a tick moves
 /// `tickGasLimit * reserveGasPrice` out of the plan's deposit: the most the network can charge for that
-/// tick while its gas price stays at or below `reserveGasPrice`. The network charges less (the gas the
-/// tick used, at the current price), and the difference stays in the contract as a shared buffer against
-/// gas price rises; it is not paid out. A plan whose deposit cannot cover the next reservation stops.
+/// tick while its gas price stays at or below `reserveGasPrice`. The network charges less: the gas the
+/// tick used, at the current price. So a tick ends by measuring its own gas, charging the plan for it at
+/// the network's price (TickCharged) and putting the rest of the reservation back into the deposit, where
+/// it pays for later ticks or leaves with `stop`. A plan whose deposit cannot cover the next reservation
+/// stops.
 contract RecurringBuy is ReentrancyGuard {
     /// @notice Parameters of a new plan. The path is single-hop: tokenIn -> (pool fee) -> tokenOut.
     struct PlanParams {
@@ -78,6 +81,9 @@ contract RecurringBuy is ReentrancyGuard {
     /// @notice Gas a tick keeps back from the swap for scheduling the next tick. On testnet scheduleCall
     /// took 1.41M gas; the rest covers the capacity probes and the bookkeeping after the swap.
     uint256 public constant RESCHEDULE_GAS = 1_600_000;
+    /// @notice Gas a tick adds to the measurement of its own gas, for what it still does after measuring:
+    /// one storage write, one event and the return.
+    uint256 public constant SETTLEMENT_GAS = 40_000;
 
     /// @notice The SaucerSwap V2 router every plan swaps through.
     ISaucerSwapV2Router public immutable router;
@@ -96,6 +102,9 @@ contract RecurringBuy is ReentrancyGuard {
     event TickExecuted(uint256 indexed planId, uint64 tickNumber, uint256 amountIn, uint256 amountOut);
     /// @param reason The router's revert data, e.g. Error("Too little received") below the price floor.
     event TickSkipped(uint256 indexed planId, uint64 tickNumber, bytes reason);
+    /// @notice The plan paid `gasCharged * gasPrice` for this tick out of the tick's reservation; the rest
+    /// of the reservation went back to the plan's deposit.
+    event TickCharged(uint256 indexed planId, uint64 tickNumber, uint256 gasCharged, uint256 gasPrice);
     /// @param hssResponseCode The Hedera Schedule Service response behind the stop: scheduleCall's for
     /// ScheduleFailed, deleteSchedule's for StoppedByOwner (22 = the pending tick was deleted), else 0.
     event PlanStopped(uint256 indexed planId, uint64 ticksDone, StopReason reason, int64 hssResponseCode);
@@ -181,6 +190,7 @@ contract RecurringBuy is ReentrancyGuard {
         } catch (bytes memory reason) {
             if (bytes4(reason) == PullFailed.selector) {
                 _end(planId, plan, StopReason.PullFailed, 0);
+                _chargeTick(planId, plan, tickNumber);
                 return;
             }
             emit TickSkipped(planId, tickNumber, reason);
@@ -196,6 +206,7 @@ contract RecurringBuy is ReentrancyGuard {
             int64 responseCode = _scheduleTick(planId, plan);
             if (responseCode != SUCCESS) _end(planId, plan, StopReason.ScheduleFailed, responseCode);
         }
+        _chargeTick(planId, plan, tickNumber);
     }
 
     /// @notice One slice of a tick: pull `amountPerTick` from the owner and swap it to the owner.
@@ -307,6 +318,18 @@ contract RecurringBuy is ReentrancyGuard {
 
     function _reserve(Plan storage plan) private view returns (uint256) {
         return plan.tickGasLimit * reserveGasPrice;
+    }
+
+    /// @dev Ends a tick: charges the plan for the tick's gas and returns the rest of the tick's reservation
+    /// to the plan's deposit. A tick runs with the plan's `tickGasLimit`, so the gas gone so far is that
+    /// limit minus what is left; SETTLEMENT_GAS stands for what follows. The price is the network's,
+    /// tx.gasprice (tinybar on Hedera). If that is above `reserveGasPrice`, or the network reports none,
+    /// the plan pays `reserveGasPrice`: a tick never costs a plan more than its reservation.
+    function _chargeTick(uint256 planId, Plan storage plan, uint64 tickNumber) private {
+        uint256 gasCharged = Math.min(plan.tickGasLimit - gasleft() + SETTLEMENT_GAS, plan.tickGasLimit);
+        uint256 gasPrice = tx.gasprice == 0 || tx.gasprice > reserveGasPrice ? reserveGasPrice : tx.gasprice;
+        plan.gasDeposit += _reserve(plan) - gasCharged * gasPrice;
+        emit TickCharged(planId, tickNumber, gasCharged, gasPrice);
     }
 
     function _end(uint256 planId, Plan storage plan, StopReason reason, int64 hssResponseCode) private {

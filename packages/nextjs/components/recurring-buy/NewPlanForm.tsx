@@ -427,8 +427,9 @@ const PlanBuilder = ({ network, contract }: { network: RecurringBuyNetwork; cont
                     {gasPriceTinybar !== undefined && (
                       <>
                         {" "}
-                        Hedera charges the contract about {formatHbar(TICK_GAS_USED * gasPriceTinybar)} at today&apos;s
-                        gas price; the rest stays in the contract as a shared buffer and is not refunded.
+                        A tick costs about {formatHbar(TICK_GAS_USED * gasPriceTinybar)} at today&apos;s gas price. The
+                        contract charges the plan what the tick used and puts the rest of the reservation back into the
+                        deposit.
                       </>
                     )}
                   </>
@@ -440,9 +441,10 @@ const PlanBuilder = ({ network, contract }: { network: RecurringBuyNetwork; cont
               <dd className="m-0">
                 {deposit !== undefined ? (
                   <>
-                    <b>{formatHbar(deposit)}</b> for {ticks.toString()} ticks, paid with the start transaction. Stopping
-                    early refunds what is not reserved yet, plus the pending tick&apos;s reservation when Hedera deletes
-                    its schedule.
+                    <b>{formatHbar(deposit)}</b>, one reservation for each of the {ticks.toString()} ticks, paid with
+                    the start transaction. What the ticks do not use stays in the deposit: withdraw it when the plan
+                    ends, or stop early and get it back with the pending tick&apos;s reservation, if Hedera deletes that
+                    schedule.
                   </>
                 ) : (
                   "…"

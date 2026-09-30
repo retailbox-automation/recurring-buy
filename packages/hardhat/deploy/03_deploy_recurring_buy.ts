@@ -14,8 +14,9 @@ const SAUCERSWAP_ROUTER: Record<string, string> = {
 
 // JSON-RPC reports gas prices in weibar (18 decimals); inside the EVM Hedera counts HBAR in tinybar (8).
 const WEIBAR_PER_TINYBAR = 10_000_000_000n;
-// RecurringBuy reserves tick gas at twice the gas price seen at deploy time, so a plan's deposit still
-// covers its ticks if HBAR loses up to half its value against the dollar-denominated gas price.
+// RecurringBuy reserves tick gas at twice the gas price seen at deploy time and gives a plan back what a
+// tick did not cost. The margin keeps a reservation large enough if HBAR loses up to half its value against
+// the dollar-denominated gas price.
 const RESERVE_MARGIN = 2n;
 
 const deployRecurringBuy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
