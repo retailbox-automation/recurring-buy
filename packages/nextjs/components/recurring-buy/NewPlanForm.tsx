@@ -282,8 +282,8 @@ const PlanBuilder = ({ network, contract }: { network: RecurringBuyNetwork; cont
   const run = async (step: SignStep["kind"], send: () => Promise<`0x${string}`>, after?: () => unknown) => {
     setBusy(step);
     try {
-      await writeTx(send);
-      await after?.();
+      // useTransactor returns no hash, without throwing, when there is no wallet client.
+      if (await writeTx(send)) await after?.();
     } catch {
       // useTransactor has shown the error.
     } finally {
