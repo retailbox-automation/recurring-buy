@@ -4,7 +4,9 @@ test = "test"
 script = "script"
 out = "out"
 libs = ["lib"]
-# The same compiler settings as packages/hardhat/hardhat.config.ts.
+# solc and optimizer as in the Hardhat variant's hardhat.config.ts. Hardhat compiles for its default EVM
+# version, paris; this package targets cancun, as the starter's Foundry package does. Hedera ran a cancun build
+# (docs/testnet-findings.md, run F).
 solc = "0.8.28"
 optimizer = true
 optimizer_runs = 200

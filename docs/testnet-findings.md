@@ -102,26 +102,6 @@ Read-only calls to the mirror node's `/api/v1/contracts/call`, which runs a call
 
 - **D1.** An HTS token with a finite supply refuses an allowance above its maximum supply. `approve(SwapRouter, 2^63 - 1)` on SAUCE (supply type `FINITE`, maximum supply 1,000,000,000,000,000 in its smallest unit), sent from an account associated with SAUCE, reverted with `AMOUNT_EXCEEDS_TOKEN_MAX_SUPPLY`. The same call for exactly the maximum supply returned true, and for the maximum supply plus one it reverted again. On WHBAR (supply type `INFINITE`) the call with `2^63 - 1` returned true. So `RecurringBuy` approves the router for a finite-supply token's maximum supply, which it reads with the Token Service's `getTokenInfo` (`0x167`), and for `2^63 - 1` otherwise. A simulated contract creation that does the same steps (associate, `getTokenInfo`, approve, then approve one unit more) returned, for SAUCE: response code 22, supply type finite, maximum supply 1,000,000,000,000,000, true for the approval of that amount, and a revert for one unit more. For WHBAR: response code 22, supply type infinite, maximum supply 0, true for `2^63 - 1`. `getTokenInfo` took 21,108 gas for either token, and the full `TokenInfo` struct decoded as declared in `contracts/interfaces/IHederaTokenService.sol`. Once deployed, the contract's own `start()` for a plan that spends SAUCE, simulated the same way, returned a plan id (run E).
 
-## Run E: this template's contract (2026-09-30)
-
-`RecurringBuy` as it is in this repository, deployed to testnet by the account [`0.0.9386584`](https://hashscan.io/testnet/account/0.0.9386584) through hashio: [0.0.10795675](https://hashscan.io/testnet/contract/0.0.10795675) (`0x24d06cfba7265a93c5a20743135f01f29c49da17`).
-
-| Step | Result |
-| --- | --- |
-| Deploy, gas limit 3,000,000 | [1790790375.672707104](https://hashscan.io/testnet/transaction/1790790375.672707104): SUCCESS. 2,176,533 gas (`eth_estimateGas` said 2,376,899, the Hardhat network 2,176,737), 2.3724 HBAR. Constructor arguments: router `0.0.1414040`, reserve gas price 228 tinybar |
-| Source verification through Sourcify's v2 API | exact match of the creation and the runtime code: [sourcify.dev/server/v2/contract/296/0x24d06Cfba7265A93c5A20743135F01f29C49DA17](https://sourcify.dev/server/v2/contract/296/0x24d06Cfba7265A93c5A20743135F01f29C49DA17) (match 54436423) |
-| Simulated `start()` of a plan that spends SAUCE, through the mirror node's `/contracts/call` | returned plan id 1: the contract associated itself with SAUCE, read its maximum supply and approved the router for it (D1). 3,280,633 gas estimated. With a deposit one tinybar short the same call reverted with `InsufficientGasDeposit(433200000)` |
-
-Findings:
-
-- **E1.** The network charged 109 tinybar per gas while hashio's `eth_gasPrice` returned 114 (1,140,000,000,000 weibar), and the mirror node records `gas_price` 114 for the transaction. The deployer paid 237,242,097 tinybar, which is 2,176,533 × 109 to the tinybar: the gas used, not the limit.
-
-## Relay and tooling
-
-- **C1.** hashio's block header reports a `baseFeePerGas` of 109, far below the gas price the relay accepts. A client that derives its fees from the header sends a price the relay rejects with "Gas price … is below configured minimum". Read `eth_gasPrice` and send that.
-- **C2.** Source verification with hardhat-verify 2.1.3 failed on 2026-09-24: it calls Sourcify's v1 API, which answered 404. Sourcify's v2 API (`POST /server/v2/verify/296/<address>` with the standard JSON input) verified the contract. On 2026-09-30 the same call verified this template's contract (run E), with the standard JSON input from `deployments/hederaTestnet/solcInputs/`, compiler `0.8.28+commit.7893614a`, contract `contracts/RecurringBuy.sol:RecurringBuy` and the deploy transaction's hash; the job finished in 5 s.
-- **C3.** A contract deployed through the relay gets itself as its admin key. Hashscan shows an admin key on a contract that nobody administers.
-
 ## Run F: the Foundry variant (2026-09-30)
 
 `RecurringBuy` from `packages/foundry`, deployed with `yarn foundry:deploy:testnet` (forge 1.7.1, `forge script` through hashio) by the account [`0.0.10012993`](https://hashscan.io/testnet/account/0.0.10012993). The plan was started and withdrawn with `cast send`.
@@ -145,3 +125,23 @@ Findings:
 - **F2.** A buy fails when the owner is not yet associated with the token bought and counts on automatic association, even with unlimited automatic associations (`max_automatic_token_associations = -1`, as for this account). The tick's call trace on the mirror node (`/contracts/results/<hash>/actions`) shows the pool's `transferToken` of SAUCE to the owner, at the Token Service, using all 173,036 gas it was given and failing with `INSUFFICIENT_GAS`; the pool then reverted with `TransferFail(21)`. In run E the same call to an owner associated with SAUCE used 15,284 of 172,836 gas. The association costs more gas than a buy's share of the tick (the tick gas limit minus `RESCHEDULE_GAS`), so every tick of such a plan is skipped: the owner has to associate (`associate()`, HIP-719) before the first tick. Not tested: the same plan after an explicit association, and a larger tick gas limit.
 - **F3.** `cast send` sets the gas limit to `eth_estimateGas`. For `stop` with a refund that was 43,125, and the call ran out of gas; with a limit of 100,000 it used 35,937. Give a call that sends HBAR a margin over the estimate.
 - **F4.** `forge verify-contract --verifier sourcify` of forge 1.7.1 calls Sourcify's v2 API, which gave an exact runtime match (compare C2).
+
+## Run E: this template's contract (2026-09-30)
+
+`RecurringBuy` as it is in this repository, deployed to testnet by the account [`0.0.9386584`](https://hashscan.io/testnet/account/0.0.9386584) through hashio: [0.0.10795675](https://hashscan.io/testnet/contract/0.0.10795675) (`0x24d06cfba7265a93c5a20743135f01f29c49da17`).
+
+| Step | Result |
+| --- | --- |
+| Deploy, gas limit 3,000,000 | [1790790375.672707104](https://hashscan.io/testnet/transaction/1790790375.672707104): SUCCESS. 2,176,533 gas (`eth_estimateGas` said 2,376,899, the Hardhat network 2,176,737), 2.3724 HBAR. Constructor arguments: router `0.0.1414040`, reserve gas price 228 tinybar |
+| Source verification through Sourcify's v2 API | exact match of the creation and the runtime code: [sourcify.dev/server/v2/contract/296/0x24d06Cfba7265A93c5A20743135F01f29C49DA17](https://sourcify.dev/server/v2/contract/296/0x24d06Cfba7265A93c5A20743135F01f29C49DA17) (match 54436423) |
+| Simulated `start()` of a plan that spends SAUCE, through the mirror node's `/contracts/call` | returned plan id 1: the contract associated itself with SAUCE, read its maximum supply and approved the router for it (D1). 3,280,633 gas estimated. With a deposit one tinybar short the same call reverted with `InsufficientGasDeposit(433200000)` |
+
+Findings:
+
+- **E1.** The network charged 109 tinybar per gas while hashio's `eth_gasPrice` returned 114 (1,140,000,000,000 weibar), and the mirror node records `gas_price` 114 for the transaction. The deployer paid 237,242,097 tinybar, which is 2,176,533 × 109 to the tinybar: the gas used, not the limit.
+
+## Relay and tooling
+
+- **C1.** hashio's block header reports a `baseFeePerGas` of 109, far below the gas price the relay accepts. A client that derives its fees from the header sends a price the relay rejects with "Gas price … is below configured minimum". Read `eth_gasPrice` and send that.
+- **C2.** Source verification with hardhat-verify 2.1.3 failed on 2026-09-24: it calls Sourcify's v1 API, which answered 404. Sourcify's v2 API (`POST /server/v2/verify/296/<address>` with the standard JSON input) verified the contract. On 2026-09-30 the same call verified this template's contract (run E), with the standard JSON input from `deployments/hederaTestnet/solcInputs/`, compiler `0.8.28+commit.7893614a`, contract `contracts/RecurringBuy.sol:RecurringBuy` and the deploy transaction's hash; the job finished in 5 s.
+- **C3.** A contract deployed through the relay gets itself as its admin key. Hashscan shows an admin key on a contract that nobody administers.
