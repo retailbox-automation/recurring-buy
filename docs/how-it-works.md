@@ -30,7 +30,7 @@ The app rebuilds a plan's history from the contract's events (`PlanCreated`, `Ti
 ```
 packages/hardhat     RecurringBuy.sol, its mocks and tests, the deploy script
 packages/nextjs      the app: /, /plans/new, /plans, plus the starter's Debug Contracts and block explorer
-packages/saucerswap  @sh/saucerswap: SaucerSwap V2 addresses, quotes, swap paths, HTS association, WHBAR wrapping, relay gas price
+packages/saucerswap  @sh/saucerswap: SaucerSwap V2 addresses, quotes, swap paths, HTS association, WHBAR wrapping
 docs                 what was measured on testnet, costs, how to check a tick
 tools/gate           the template's eligibility checks
 .harness             Hedera Harness recipe and validators

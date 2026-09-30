@@ -1,6 +1,6 @@
 import { type Address, type Hex, type PublicClient, decodeFunctionResult, encodeFunctionData, parseAbi } from "viem";
 
-/** SaucerSwapV2QuoterV2.quoteExactInput — gas-free swap quotes (docs.saucerswap.finance/developers/v2/quote). */
+/** SaucerSwapV2QuoterV2's `quoteExactInput` (docs.saucerswap.finance/developers/v2/quote). */
 export const quoterAbi = parseAbi([
   "function quoteExactInput(bytes path, uint256 amountIn) returns (uint256 amountOut, uint160[] sqrtPriceX96AfterList, uint32[] initializedTicksCrossedList, uint256 gasEstimate)",
 ]);
@@ -8,21 +8,11 @@ export const quoterAbi = parseAbi([
 export type SwapQuote = {
   /** Output amount, in the last token's smallest unit. */
   amountOut: bigint;
-  /**
-   * The quoter's own gas estimate. Too low for a real swap's gasLimit — it does
-   * not include the HTS transfers `exactInput` performs (docs/testnet-findings.md,
-   * A6). Use
-   * `recommendedSwapGasLimit` from `./gas.js` with a real `eth_estimateGas` on the
-   * router call instead.
-   */
+  /** The quoter's own estimate, which leaves out the HTS transfers of a swap: not a gas limit (A6). */
   quoterGasEstimate: bigint;
 };
 
-/**
- * Simulates a swap through `quoteExactInput` via `eth_call` — no gas cost, no
- * wallet needed. Rejects (the client throws) when the path has no pool, or no
- * liquidity for `amountIn`.
- */
+/** What a swap would give, from the quoter through `eth_call`. Rejects when the path has no pool or no liquidity. */
 export async function quoteExactInput(
   client: Pick<PublicClient, "call">,
   quoter: Address,
@@ -44,10 +34,8 @@ export async function quoteExactInput(
 }
 
 /**
- * Minimum acceptable output for a swap, `slippageBps` basis points below the
- * quote — integer math only, matching what the router enforces on-chain
- * (`amountOutMinimum`; reverts with "Too little received" otherwise,
- * docs/testnet-findings.md, S3).
+ * The least output to accept, `slippageBps` basis points below the quote, in integers. The router reverts with "Too
+ * little received" below it (docs/testnet-findings.md, S3).
  */
 export function minOut(quotedAmountOut: bigint, slippageBps: number): bigint {
   if (quotedAmountOut <= 0n) throw new Error(`quotedAmountOut must be > 0, got ${quotedAmountOut}`);

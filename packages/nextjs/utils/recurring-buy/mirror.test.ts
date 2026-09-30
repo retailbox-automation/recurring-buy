@@ -1,5 +1,5 @@
 // Fixtures are testnet mirror node responses for objects of the two prototype runs (docs/testnet-findings.md),
-// fetched 2026-09-29. contract-spike.json keeps four fields of /contracts/0.0.10777783;
+// fetched 2026-09-29. contract-prototype.json keeps four fields of /contracts/0.0.10777783;
 // every other file is the full response body.
 import negativeByNonce from "./fixtures/result-negative-by-nonce.json";
 import negativeByTimestamp from "./fixtures/result-negative-by-timestamp.json";
@@ -12,7 +12,7 @@ import { TESTNET_MIRROR, fixtureMirror } from "./testing";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-const SPIKE_CONTRACT = "0.0.10777783";
+const PROTOTYPE_CONTRACT = "0.0.10777783";
 const HASHIO_RELAY = "0.0.7314364";
 const NEGATIVE_TICK = "1790691529.110199928";
 const TICK1 = "1790691317.164542146";
@@ -23,7 +23,7 @@ describe("scheduleState", () => {
   });
 
   it("computes expiry itself: the mirror node shows an expired schedule like a waiting one", () => {
-    // Spike-swap S4: never signed, expired at 1790274645. Days later the record still reads as open.
+    // Run A, S4: never signed, expired at 1790274645. Days later the record still reads as open.
     assert.equal(expiredSchedule.executed_timestamp, null);
     assert.equal(expiredSchedule.deleted, false);
     const expiry = 1790274645;
@@ -39,9 +39,9 @@ describe("scheduleState", () => {
 
 describe("fetchExecution", () => {
   it("reads a tick by its timestamp under the contract, not by transaction id and nonce", async () => {
-    const byTimestamp = `/contracts/${SPIKE_CONTRACT}/results/${NEGATIVE_TICK}`;
+    const byTimestamp = `/contracts/${PROTOTYPE_CONTRACT}/results/${NEGATIVE_TICK}`;
     const { mirror, requested } = fixtureMirror({ [byTimestamp]: negativeByTimestamp });
-    const execution = await fetchExecution(mirror, SPIKE_CONTRACT, NEGATIVE_TICK);
+    const execution = await fetchExecution(mirror, PROTOTYPE_CONTRACT, NEGATIVE_TICK);
     assert.equal(execution?.result, "CONTRACT_REVERT_EXECUTED");
     assert.equal(execution?.error_message, "0x");
     assert.deepEqual(requested, [byTimestamp]);
@@ -52,13 +52,15 @@ describe("fetchExecution", () => {
     // answers with the HSS scheduleCall, a successful call to 0x…16b a minute earlier.
     assert.equal(negativeByNonce.contract_id, "0.0.363");
     assert.equal(negativeByNonce.result, "SUCCESS");
-    const { mirror } = fixtureMirror({ [`/contracts/${SPIKE_CONTRACT}/results/${NEGATIVE_TICK}`]: negativeByNonce });
-    await assert.rejects(fetchExecution(mirror, SPIKE_CONTRACT, NEGATIVE_TICK), /returned 0\.0\.363@1790691471/);
+    const { mirror } = fixtureMirror({
+      [`/contracts/${PROTOTYPE_CONTRACT}/results/${NEGATIVE_TICK}`]: negativeByNonce,
+    });
+    await assert.rejects(fetchExecution(mirror, PROTOTYPE_CONTRACT, NEGATIVE_TICK), /returned 0\.0\.363@1790691471/);
   });
 
   it("returns null when the mirror node has no such execution", async () => {
     const { mirror } = fixtureMirror({});
-    assert.equal(await fetchExecution(mirror, SPIKE_CONTRACT, NEGATIVE_TICK), null);
+    assert.equal(await fetchExecution(mirror, PROTOTYPE_CONTRACT, NEGATIVE_TICK), null);
   });
 });
 
@@ -72,7 +74,7 @@ describe("tick charge", () => {
     assert.equal(paidBy(transaction, HASHIO_RELAY), 0n);
 
     const { mirror, requested } = fixtureMirror({ [`/transactions?timestamp=${TICK1}`]: tick1Transactions });
-    assert.equal(await fetchTickCharge(mirror, SPIKE_CONTRACT, TICK1), 176_896_536n);
+    assert.equal(await fetchTickCharge(mirror, PROTOTYPE_CONTRACT, TICK1), 176_896_536n);
     assert.deepEqual(requested, [`/transactions?timestamp=${TICK1}`]);
   });
 });

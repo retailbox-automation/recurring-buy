@@ -3,10 +3,8 @@ import { type PublicClient, createPublicClient, http } from "viem";
 import { ENDPOINTS, type Network } from "./addresses.js";
 
 /**
- * A minimal viem chain definition for `network`, sufficient for `eth_call` and
- * `eth_gasPrice` through the hashio JSON-RPC relay. `nativeCurrency.decimals` is 18
- * to match how the relay reports `msg.value`/balances, even though HBAR itself has 8
- * (see `tinybarToWeibar` in `./swap.js` and packages/nextjs/scaffold.config.ts).
+ * A viem chain for `network` through the hashio relay. `nativeCurrency.decimals` is 18 because the relay counts HBAR in
+ * weibar; HBAR itself has 8 decimals (see `tinybarToWeibar`).
  */
 export function saucerSwapChain(network: Network) {
   const { chainId, rpcUrl } = ENDPOINTS[network];

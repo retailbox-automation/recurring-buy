@@ -1,11 +1,8 @@
 import { type Address, type Hex, encodePacked } from "viem";
 
 /**
- * SaucerSwap V2 swap paths follow the Uniswap V3 encoding: token addresses
- * interleaved with the pool fee (in hundredths of a bip) between each hop —
- * `tokenIn(20 bytes) | fee(3 bytes) | tokenOut(20 bytes) | fee(3 bytes) | ...`
- * (docs.saucerswap.finance/developers/v2/swap; verified against a live
- * quoteExactInput call on testnet, docs/testnet-findings.md).
+ * A SaucerSwap V2 path, packed as in Uniswap V3: token (20 bytes), pool fee in hundredths of a bip (3 bytes), token,
+ * and so on (docs.saucerswap.finance/developers/v2/swap).
  */
 export type SwapPath = { tokens: readonly Address[]; fees: readonly number[] };
 
@@ -28,11 +25,11 @@ export function encodePath(tokens: readonly Address[], fees: readonly number[]):
   return encodePacked(types, values);
 }
 
-/** Convenience for the common single-hop case — what SaucerSwap's own docs examples use. */
+/** A path through one pool. */
 export const encodeSingleHopPath = (tokenIn: Address, fee: number, tokenOut: Address): Hex =>
   encodePath([tokenIn, tokenOut], [fee]);
 
-const HOP_HEX_LENGTH = 46; // 3-byte fee (6 hex chars) + 20-byte address (40 hex chars)
+const HOP_HEX_LENGTH = 46; // a 3-byte fee and a 20-byte address
 
 /** Unpacks a swap path built by `encodePath`. Throws on a malformed length. */
 export function decodePath(path: Hex): SwapPath {

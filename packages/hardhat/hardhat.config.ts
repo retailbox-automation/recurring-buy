@@ -66,9 +66,8 @@ const config: HardhatUserConfig = {
       chainId: 295,
     },
   },
-  // Hedera is now supported on the main Sourcify instance (sourcify.dev).
-  // No custom verifier URL required — standard tooling works out of the box.
-  // See: https://hedera.com/blog/smart-contract-verification-sourcify-dev-now-supported
+  // Hashscan reads sourcify.dev. hardhat-verify 2.1.3 calls Sourcify's v1 API, which answered 404 on testnet
+  // (docs/testnet-findings.md, C2); packages/hardhat/README.md has the v2 request that verified RecurringBuy.
   sourcify: {
     enabled: true,
   },

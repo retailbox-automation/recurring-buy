@@ -1,10 +1,9 @@
-// Events here are encoded with the template's ABI: the template's RecurringBuy is not on testnet yet, and the
-// prototype's contract emitted other events. The schedules and executions they point at are real testnet records from
-// the prototype runs (docs/testnet-findings.md, see mirror.test.ts): run B's negative control, a tick that reverted as
-// a whole, and run A's expired schedule (S4).
+// Events here are encoded with the template's ABI, because the prototype's contract emitted other events. The
+// schedules and executions they point at are real testnet records from the prototype runs (docs/testnet-findings.md,
+// see mirror.test.ts): run B's negative control, a tick that reverted as a whole, and run A's expired schedule (S4).
 import { recurringBuyAbi } from "./abi";
-import contractRecord from "./fixtures/contract-spike.json";
-import spikeLogs from "./fixtures/logs-spike-contract.json";
+import contractRecord from "./fixtures/contract-prototype.json";
+import prototypeLogs from "./fixtures/logs-prototype.json";
 import negativeByTimestamp from "./fixtures/result-negative-by-timestamp.json";
 import expiredSchedule from "./fixtures/schedule-0.0.10702201-expired.json";
 import negativeSchedule from "./fixtures/schedule-0.0.10777841-negative.json";
@@ -108,8 +107,8 @@ describe("decodePlanLog", () => {
 
   it("ignores logs of other contracts and other event signatures", () => {
     // The prototype's contract emitted Ticked/Scheduled/Stopped, which RecurringBuy does not have.
-    assert.equal(spikeLogs.logs.length, 8);
-    assert.deepEqual(decodeAll(spikeLogs.logs as MirrorLog[]), []);
+    assert.equal(prototypeLogs.logs.length, 8);
+    assert.deepEqual(decodeAll(prototypeLogs.logs as MirrorLog[]), []);
   });
 });
 
@@ -190,7 +189,7 @@ describe("chainStatus after the owner stops", () => {
 
 describe("resolvePlan on real schedule records", () => {
   it("calls a plan broken when its last tick reverted as a whole, whatever the contract's flag says", async () => {
-    // Spike N1 negative control: the allowance was 0, the tick reverted without a reason and took its bookkeeping
+    // Run B's negative control: the allowance was 0, the tick reverted without a reason and took its bookkeeping
     // along, so the contract still reported the plan active with ticksDone 0.
     const events = decodeAll([
       created(1n, ALICE, "1790691471.337917655"),

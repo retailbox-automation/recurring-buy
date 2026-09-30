@@ -93,8 +93,8 @@ export const MISSED_AFTER_SECONDS = 60;
 
 /**
  * The state of a schedule from its mirror record. The mirror node never marks a schedule as expired: one Hedera did not
- * run keeps `executed_timestamp: null` and `deleted: false` forever (docs/testnet-findings.md, A7), so "missed" is computed here
- * from the clock.
+ * run keeps `executed_timestamp: null` and `deleted: false` forever (docs/testnet-findings.md, A7), so "missed" is
+ * computed here from the clock.
  */
 export function scheduleState(schedule: MirrorSchedule, nowSeconds: number): ScheduleState {
   if (schedule.executed_timestamp) return "executed";
@@ -107,8 +107,8 @@ export function scheduleState(schedule: MirrorSchedule, nowSeconds: number): Sch
 /**
  * The execution a schedule ran, read by its consensus timestamp under the contract that ran it. Not by
  * `/contracts/results/{transactionId}?nonce=N`: a scheduled tick inherits the transaction id and nonce of the HIP-1215
- * call that created its schedule, so that URL can return the scheduling call instead (docs/testnet-findings.md, B7). Not by
- * `/contracts/results?timestamp=…` either: that list hides a scheduled call unless `internal=true` is passed.
+ * call that created its schedule, so that URL can return the scheduling call instead (docs/testnet-findings.md, B7).
+ * Not by `/contracts/results?timestamp=…` either: that list hides a scheduled call unless `internal=true` is passed.
  */
 export async function fetchExecution(
   mirror: Mirror,

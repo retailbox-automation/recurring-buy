@@ -61,8 +61,6 @@ type Form = {
   floorPercent: string;
 };
 
-const toHederaId = (address: string) => `0.0.${BigInt(address)}`;
-
 /** "0.0.N" or an EVM address as an EVM address; null when it is neither. */
 function toTokenAddress(input: string): string | null {
   const value = input.trim();
@@ -82,8 +80,8 @@ function parseAmount(value: string, decimals: number | undefined): bigint {
 function initialForm(chainId: number): Form {
   const route = defaultRoute(chainId);
   return {
-    tokenIn: route ? toHederaId(route.tokenIn) : "",
-    tokenOut: route ? toHederaId(route.tokenOut) : "",
+    tokenIn: route ? hederaIdOf(route.tokenIn) : "",
+    tokenOut: route ? hederaIdOf(route.tokenOut) : "",
     fee: String(route?.fee ?? 3000),
     amount: "0.05",
     every: "1",
@@ -171,7 +169,6 @@ const PlanBuilder = ({ network, contract }: { network: RecurringBuyNetwork; cont
   const [wrapInput, setWrapInput] = useState<string | null>(null);
   const [wrapped, setWrapped] = useState(false);
 
-  // ---- what the form describes -------------------------------------------------------------------------------
   const tokenIn = toTokenAddress(form.tokenIn);
   const tokenOut = toTokenAddress(form.tokenOut);
   const fee = Number(form.fee);
@@ -191,7 +188,6 @@ const PlanBuilder = ({ network, contract }: { network: RecurringBuyNetwork; cont
   const total = amountPerTick * ticks;
   const spendIsWhbar = Boolean(tokenIn && tokenIn.toLowerCase() === network.saucerSwap?.whbar.toLowerCase());
 
-  // ---- contract and wallet state -----------------------------------------------------------------------------
   const { data: contractState } = useReadContracts({
     allowFailure: false,
     contracts: [
@@ -257,7 +253,6 @@ const PlanBuilder = ({ network, contract }: { network: RecurringBuyNetwork; cont
   const showWrap = spendIsWhbar && (shortfall > 0n || wrapped);
   const wrapAmount = wrapInput === null ? shortfall : parseAmount(wrapInput, HBAR_DECIMALS);
 
-  // ---- validation --------------------------------------------------------------------------------------------
   const problems: string[] = [];
   if (!tokenIn || !tokenOut) problems.push("Enter both tokens as 0.0.N or an EVM address.");
   else if (tokenIn === tokenOut) problems.push("Spend and buy tokens must differ.");
@@ -283,7 +278,6 @@ const PlanBuilder = ({ network, contract }: { network: RecurringBuyNetwork; cont
     tickGasLimit,
   };
 
-  // ---- transactions ------------------------------------------------------------------------------------------
   const run = async (step: SignStep["kind"], send: () => Promise<`0x${string}`>, after?: () => unknown) => {
     setBusy(step);
     try {

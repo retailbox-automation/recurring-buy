@@ -4,9 +4,8 @@ import type { SaucerSwapAddresses } from "./addresses.js";
 import { tinybarToWeibar } from "./swap.js";
 
 /**
- * SaucerSwap's WhbarHelper. Its `deposit()` passes the HBAR sent with it to the WHBAR contract and gives the sender
- * the same amount of WHBAR. SaucerSwap's docs tell integrations to wrap through this helper, not through the WHBAR
- * contract itself (docs.saucerswap.finance/developers/whbar/overview).
+ * SaucerSwap's WhbarHelper: `deposit()` gives the sender as much WHBAR as the HBAR sent with it. SaucerSwap's docs ask
+ * integrations to wrap through it, not through the WHBAR contract (docs.saucerswap.finance/developers/whbar/overview).
  */
 export const whbarHelperAbi = parseAbi(["function deposit() payable"]);
 

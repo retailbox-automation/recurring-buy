@@ -5,7 +5,6 @@ import {
   type Network,
   type SaucerSwapAddresses,
   encodeSingleHopPath,
-  hashioGasPrice,
   hederaIdToLongZeroAddress,
   quoteExactInput,
 } from "@sh/saucerswap";
@@ -20,6 +19,7 @@ import {
   fetchGasPrice,
   fetchMirrorAccount,
   fetchTickCharge,
+  hederaIdOf,
 } from "~~/utils/recurring-buy/mirror";
 import { type PlanView, loadContractEvents, plansOwnedBy, resolvePlan } from "~~/utils/recurring-buy/plan";
 import { contracts } from "~~/utils/scaffold-hbar/contract";
@@ -194,13 +194,13 @@ export function useTickCharges(
 
 export type TokenInfo = { symbol: string; decimals: number };
 
-/** Symbol and decimals of an HTS token (its EVM address is its long-zero id); null when the mirror has no such token. */
+/** Symbol and decimals of an HTS token, by its long-zero address; null when the mirror node has no such token. */
 export function useTokenInfo(network: RecurringBuyNetwork, token: string | undefined) {
   const { mirror, chainId } = network;
   return useQuery({
     queryKey: ["recurring-buy", "token", chainId, token?.toLowerCase()],
     queryFn: async (): Promise<TokenInfo | null> => {
-      const info = await mirror!.get<{ symbol: string; decimals: string }>(`/tokens/0.0.${BigInt(token!)}`);
+      const info = await mirror!.get<{ symbol: string; decimals: string }>(`/tokens/${hederaIdOf(token!)}`);
       return info ? { symbol: info.symbol, decimals: Number(info.decimals) } : null;
     },
     enabled: Boolean(mirror && token),
@@ -221,13 +221,13 @@ export function useGasPrice(network: RecurringBuyNetwork) {
 
 /**
  * Fee fields for a transaction through hashio: the max fee from `eth_gasPrice`, no priority fee. hashio's block header
- * reports a base fee far below its minimum gas price, so fees a wallet derives from it are rejected.
+ * reports a base fee far below its minimum gas price, so fees a wallet derives from it are rejected (C1).
  */
 export function useHederaFees(chainId: number) {
   const publicClient = usePublicClient({ chainId });
   return async () => {
     if (!publicClient) throw new Error("No RPC client for this network.");
-    return { maxFeePerGas: await hashioGasPrice(publicClient), maxPriorityFeePerGas: 0n };
+    return { maxFeePerGas: await publicClient.getGasPrice(), maxPriorityFeePerGas: 0n };
   };
 }
 

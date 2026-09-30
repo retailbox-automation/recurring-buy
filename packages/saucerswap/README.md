@@ -1,8 +1,9 @@
 # @sh/saucerswap
 
 A small SaucerSwap V2 client for Hedera: contract addresses, gas-free quotes, swap
-calldata (build + decode), HTS token association, wrapping HBAR into WHBAR through
-SaucerSwap's WhbarHelper, and gas helpers for the hashio JSON-RPC relay. Framework-agnostic — no React, no wallet, just `viem`.
+calldata (build and decode), HTS token association, wrapping HBAR into WHBAR
+through SaucerSwap's WhbarHelper, and a gas limit for swaps. No React and no
+wallet, just `viem`.
 
 ## Use
 
@@ -31,9 +32,8 @@ From the Next.js app in this workspace: `import { ... } from "@sh/saucerswap"` a
 
 `yarn saucerswap:test` — path encode/decode roundtrip, integer `minOut`, swap
 calldata build+decode roundtrip (HBAR->token and token->token), HIP-719
-`associate()` roundtrip, mirror-node association parsing on a fixture, gas-limit
-padding, the WhbarHelper `deposit()` transaction, and the address book against
-`hederaIdToLongZeroAddress`. `yarn
+`associate()` roundtrip, gas-limit padding, the WhbarHelper `deposit()`
+transaction, and the address book against `hederaIdToLongZeroAddress`. `yarn
 saucerswap:test:live` additionally calls `quoteExactInput` and `eth_gasPrice`
 against the live Hedera testnet RPC (skipped by default, so the eligibility gate
 never depends on testnet being reachable).

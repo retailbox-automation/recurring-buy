@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { formatUnits } from "viem";
 import type { TokenInfo } from "~~/hooks/recurring-buy/useRecurringBuy";
+import { hederaIdOf } from "~~/utils/recurring-buy/mirror";
 
 export const ExternalLink = ({ href, children }: { href: string; children: React.ReactNode }) => (
   <a href={href} target="_blank" rel="noreferrer" className="link link-hover">
@@ -78,7 +79,7 @@ export function formatTime(timestamp: string | number): string {
 
 /** "2.046098 SAUCE"; while the token is unknown, the raw amount and its id. */
 export function formatToken(amount: bigint, token: string, info: TokenInfo | null | undefined): string {
-  return info ? `${formatUnits(amount, info.decimals)} ${info.symbol}` : `${amount} (token 0.0.${BigInt(token)})`;
+  return info ? `${formatUnits(amount, info.decimals)} ${info.symbol}` : `${amount} (token ${hederaIdOf(token)})`;
 }
 
 /** HBAR from tinybar, rounded to 4 decimals for display. */

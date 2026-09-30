@@ -3,7 +3,6 @@ import { test } from "node:test";
 
 import { TESTNET_ADDRESSES } from "../src/addresses.js";
 import { createSaucerSwapClient } from "../src/client.js";
-import { hashioGasPrice } from "../src/gas.js";
 import { encodeSingleHopPath } from "../src/path.js";
 import { minOut, quoteExactInput } from "../src/quote.js";
 
@@ -27,7 +26,7 @@ test(
     assert.ok(quote.quoterGasEstimate > 0n, `expected a positive gas estimate, got ${quote.quoterGasEstimate}`);
     assert.ok(minOut(quote.amountOut, 100) < quote.amountOut);
 
-    const gasPrice = await hashioGasPrice(client);
+    const gasPrice = await client.getGasPrice();
     assert.ok(gasPrice > 0n, `expected a positive eth_gasPrice, got ${gasPrice}`);
   },
 );

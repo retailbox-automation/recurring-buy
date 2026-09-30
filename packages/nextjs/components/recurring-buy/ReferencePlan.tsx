@@ -4,7 +4,7 @@ import { PlanDetails } from "./PlanDetails";
 import { ExternalLink, Panel } from "./common";
 import { referencePlan, useContractId, usePlan, useReferenceNetwork } from "~~/hooks/recurring-buy/useRecurringBuy";
 
-/** The plan from scaffold.config.ts `referencePlan`, read from the mirror node: works without a wallet and without env. */
+/** The plan from scaffold.config.ts `referencePlan`, read from the mirror node: needs no wallet and no env. */
 export const ReferencePlan = () => {
   const network = useReferenceNetwork();
   const { data, isPending, isError, error, refetch } = usePlan(network, referencePlan.planId);

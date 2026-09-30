@@ -2,22 +2,19 @@ import type { Address } from "viem";
 
 export type Network = "testnet" | "mainnet";
 
-/** SaucerSwap V2 protocol contracts needed to quote and build a swap — one set per network. */
+/** The SaucerSwap contracts this package uses, on one network. */
 export type SaucerSwapAddresses = {
-  /** WHBAR HTS token — the first hop of any path that starts from HBAR. */
+  /** WHBAR, HBAR as an HTS token: the first hop of any path that starts from HBAR. */
   whbar: Address;
-  /** SaucerSwapV2SwapRouter — `exactInput`/`multicall`/`refundETH`. */
+  /** SaucerSwapV2SwapRouter: `exactInput`, `multicall`, `refundETH`. */
   router: Address;
-  /** SaucerSwapV2QuoterV2 — `quoteExactInput`, no gas cost. */
+  /** SaucerSwapV2QuoterV2: `quoteExactInput`, read through `eth_call`. */
   quoter: Address;
-  /** WhbarHelper — `deposit()` wraps the HBAR sent with it into WHBAR for the sender. */
+  /** WhbarHelper: `deposit()` wraps the HBAR sent with it into WHBAR for the sender. */
   whbarHelper: Address;
 };
 
-/**
- * Verified live against docs.saucerswap.finance/developers/contracts.md and a real
- * scheduled testnet swap (docs/testnet-findings.md, S1-S5) on 2026-09-24.
- */
+/** From docs.saucerswap.finance/developers/contracts; each has carried our testnet calls (docs/testnet-findings.md). */
 export const TESTNET_ADDRESSES: SaucerSwapAddresses = {
   whbar: "0x0000000000000000000000000000000000003ad2", // WHBAR token 0.0.15058
   router: "0x0000000000000000000000000000000000159398", // SwapRouter 0.0.1414040
@@ -25,10 +22,7 @@ export const TESTNET_ADDRESSES: SaucerSwapAddresses = {
   whbarHelper: "0x000000000000000000000000000000000050a8a7", // WhbarHelper 0.0.5286055
 };
 
-/**
- * From docs.saucerswap.finance/developers/contracts.md, checked 2026-09-24 — NOT
- * exercised on-chain by us. Only the testnet addresses above have a live transaction.
- */
+/** From the same list, checked 2026-09-24; not exercised by us. */
 export const MAINNET_ADDRESSES: SaucerSwapAddresses = {
   whbar: "0x0000000000000000000000000000000000163b5a", // WHBAR token 0.0.1456986
   router: "0x00000000000000000000000000000000003c437a", // SwapRouter 0.0.3949434
@@ -57,10 +51,7 @@ export const ENDPOINTS: Record<Network, NetworkEndpoints> = {
   },
 };
 
-/**
- * Converts a Hedera id ("0.0.N": account, contract, or HTS token) to its EVM
- * long-zero address — the standard mapping for anything without a separate EVM alias.
- */
+/** The EVM address of a Hedera id "0.0.N" (account, contract or HTS token) that has no EVM alias: N as 20 bytes. */
 export function hederaIdToLongZeroAddress(hederaId: string): Address {
   const parts = hederaId.split(".");
   if (parts.length !== 3 || parts.some(part => part === "" || !/^\d+$/.test(part))) {
