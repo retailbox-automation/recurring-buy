@@ -66,21 +66,22 @@ On `/plans/new` you fill in the pair, the amount per buy, the period, the number
 | # | Transaction | What it allows | Gas on testnet |
 | --- | --- | --- | --- |
 | 1 | Associate your account with the token you buy (HIP-719). Skipped if you are already associated or your account associates automatically | Lets you receive that token | 726,488 gas, 0.79 HBAR |
-| 2 | Approve the contract on the token you spend | The contract may take up to the plan's total, one buy at a time. Plans of one owner on the same token share this allowance | 727,020 gas, 0.79 HBAR |
-| 3 | Start the plan, with the gas deposit attached | Creates the plan and schedules its first tick | 1,643,976 gas, 1.79 HBAR, plus the deposit |
+| 2 | Approve the contract on the token you spend | The contract may take up to the plan's total, one buy at a time. Plans of one owner on the same token share this allowance | 727,032 gas, 0.79 HBAR |
+| 3 | Start the plan, with the gas deposit attached | Creates the plan and schedules its first tick | 1,637,955 gas, 1.79 HBAR, plus the deposit |
 
-The first plan on a contract for a given spend token costs more to start: the contract associates itself with that token, reads the token's supply from the Token Service and approves SaucerSwap's router for as much as the token allows, about 1.44 million gas (1.57 HBAR), once.
+The first plan on a contract for a given spend token costs more to start: the contract associates itself with that token, reads the token's supply from the Token Service and approves SaucerSwap's router for as much as the token allows, 1,476,561 gas (1.61 HBAR) more, once.
 
 After that nobody signs anything. Ticks are paid from the plan's **gas deposit**:
 
 - Scheduling a tick reserves `tickGasLimit × reserveGasPrice` from the deposit. The app uses a gas limit of 1,900,000. The reserve price is twice what the relay reported at deployment: on 2026-09-30 hashio reported 114 tinybar per gas on testnet (the network charged 109), which gives 228 tinybar and 1,900,000 × 228 tinybar = 4.332 HBAR per tick.
 - When the tick runs, the contract measures the gas it used, charges the plan for it at the network's gas price, and puts the rest of the reservation back into the deposit. The measurement adds a fixed 40,000 gas for the bookkeeping that follows it.
-- A tick that bought and scheduled the next one used 1,622,904 gas, 1.769 HBAR. The last tick of a plan, which schedules nothing, used 178,643 gas, 0.195 HBAR.
-- The app asks for one full reservation per buy. For four buys that is 17.33 HBAR up front; at the costs above the plan spends about 5.5 HBAR of it, and the rest is yours to withdraw when the plan ends.
+- A tick that bought and scheduled the next one used 1,605,224 gas, 1.750 HBAR. The last tick of a plan, which schedules nothing, used 182,352 gas, 0.199 HBAR. A skipped tick costs about as much as a buying one: 1,610,623 gas.
+- The contract charged each tick at the price the network billed it (109 tinybar per gas on testnet), for 37,000 to 39,000 gas more than the network counted: the allowance for the settlement is a little generous, and the difference, about 0.04 HBAR per tick, stays in the contract.
+- The app asks for one full reservation per buy. For four buys that is 17.328 HBAR up front. The reference plan was charged 5.617 HBAR of it for its four ticks and got 11.711 HBAR back when its owner withdrew.
 
-Scheduling the next tick is 87% of a tick's gas, and the amount you buy does not change it. A buy therefore costs about 1.77 HBAR in gas whatever its size.
+Scheduling the next tick is most of a tick's gas (a tick that schedules nothing used 182,352 of the 1,605,224), and the amount you buy does not change it. A buy therefore costs about 1.75 HBAR in gas whatever its size.
 
-All gas figures are from a testnet run of this contract's prototype on 2026-09-29, at 109 tinybar per gas: see [docs/testnet-findings.md](docs/testnet-findings.md). TODO(deploy): replace them with figures from this template's own contract.
+All gas figures are from this template's contract on testnet on 2026-09-30, at 109 tinybar per gas: see run E in [docs/testnet-findings.md](docs/testnet-findings.md).
 
 To try the default pair on testnet you need WHBAR, which is HBAR wrapped by the WHBAR contract `0.0.15057`: send HBAR to its `deposit()` function.
 
@@ -103,17 +104,19 @@ Read a tick by its timestamp, as above. The mirror node's `/contracts/results/<t
 
 ## Verified on testnet
 
-TODO(deploy): this template's contract is not on testnet yet. The rows below are filled in after the first deployment.
+This template's contract, deployed from this repository on 2026-09-30, and the reference plan the home page shows. Nobody sent a transaction for any tick: the network ran each one at its scheduled second.
 
 | What | Link |
 | --- | --- |
-| RecurringBuy contract | TODO(deploy) |
-| Plan #1: `start` transaction | TODO(deploy) |
-| Tick 1, run by the network: bought and scheduled tick 2 | TODO(deploy) |
-| A skipped tick: price below the floor, nothing taken | TODO(deploy) |
-| `stop`: pending schedule deleted, deposit refunded | TODO(deploy) |
+| RecurringBuy contract, source verified on Sourcify (exact match) | [0.0.10795675](https://hashscan.io/testnet/contract/0.0.10795675) |
+| Plan #1 (0.05 WHBAR → SAUCE every 5 minutes, 4 buys): `start` transaction | [1790790834.555078365](https://hashscan.io/testnet/transaction/1790790834.555078365) |
+| Tick 1, run by the network: bought 2.044654 SAUCE and scheduled tick 2 | schedule [0.0.10795766](https://hashscan.io/testnet/schedule/0.0.10795766), run at [1790791132.086448208](https://hashscan.io/testnet/transaction/1790791132.086448208) |
+| Ticks 2 to 4: bought, bought, bought and completed the plan | [1790791430.054047190](https://hashscan.io/testnet/transaction/1790791430.054047190), [1790791728.078691208](https://hashscan.io/testnet/transaction/1790791728.078691208), [1790792026.001025208](https://hashscan.io/testnet/transaction/1790792026.001025208) |
+| Withdraw: the unused deposit of plan #1 back to its owner | [1790792048.020794657](https://hashscan.io/testnet/transaction/1790792048.020794657) |
+| A skipped tick: plan #2's floor was above the price, nothing taken, next tick scheduled | schedule [0.0.10795970](https://hashscan.io/testnet/schedule/0.0.10795970), run at [1790792373.084332104](https://hashscan.io/testnet/transaction/1790792373.084332104) |
+| `stop`: pending schedule deleted, deposit and its reservation refunded | [1790792387.304319777](https://hashscan.io/testnet/transaction/1790792387.304319777); schedule [0.0.10796029](https://hashscan.io/testnet/schedule/0.0.10796029) deleted, never run |
 
-The mechanism itself has run on testnet in a prototype of this contract, [0.0.10777783](https://hashscan.io/testnet/contract/0.0.10777783): the network executed schedule [0.0.10777792](https://hashscan.io/testnet/schedule/0.0.10777792) (pull, swap, next schedule) and then schedule [0.0.10777807](https://hashscan.io/testnet/schedule/0.0.10777807) with no outside trigger. [docs/testnet-findings.md](docs/testnet-findings.md) has the full record.
+Gas, fees and balances for every row are in run E of [docs/testnet-findings.md](docs/testnet-findings.md). Before this template, a prototype of the contract ran the same mechanism: [0.0.10777783](https://hashscan.io/testnet/contract/0.0.10777783), run B.
 
 ## Environment variables
 
@@ -184,7 +187,7 @@ The recipe, its pinned version and the steps for npm-based projects are in [.har
 ## Known limitations
 
 - **Testnet and mainnet only.** Ticks need the Schedule Service, which a local chain does not have. The mainnet router address is taken from SaucerSwap's documentation and has not been exercised by us.
-- **A buy costs about 1.77 HBAR in gas whatever its size**, because each tick pays for scheduling the next one. Small, frequent buys are poor value.
+- **A buy costs about 1.75 HBAR in gas whatever its size**, because each tick pays for scheduling the next one. Small, frequent buys are poor value.
 - **The reserve gas price is fixed at deployment**, at twice the relay's gas price of that moment. A tick never costs a plan more than its reservation. If the network's gas price in tinybar rises above the reserve price, ticks cost the contract more than plans pay for them, and the contract should be redeployed.
 - **The price floor is an absolute amount, set once.** If the price moves away for good, every tick is skipped, and each skipped tick still pays for scheduling the next one.
 - **One hop.** A plan swaps through a single SaucerSwap V2 pool. The token you spend must be an HTS token, so HBAR has to be wrapped first.
@@ -194,7 +197,7 @@ The recipe, its pinned version and the steps for npm-based projects are in [.har
 - **Schedule seconds are predictable.** When a second has no capacity the contract tries the seconds 1, 2, 4, 8 and 16 later, without a random offset.
 - **No audit.** The contract has tests, not a security review.
 
-Not yet checked on a live network: the template's own contract as a whole (the prototype differs), the gas settlement at the end of a tick (it relies on `tx.gasprice` being the price Hedera charges a scheduled call), `deleteSchedule`, a swap failure caught inside a live tick, periods longer than 90 seconds, plans longer than two ticks, a browser wallet, and mainnet.
+Checked on testnet with this contract: a four-tick plan with a 5-minute period, the gas settlement of every tick against the fee the network charged, a skipped tick, and `stop` deleting a pending schedule. Not yet checked on a live network: periods of hours or days, a plan that spends a finite-supply token (only simulated), a tick that fails to take its amount, a busy schedule second, a tick that runs out of gas, a browser wallet, and mainnet.
 
 ## License
 
