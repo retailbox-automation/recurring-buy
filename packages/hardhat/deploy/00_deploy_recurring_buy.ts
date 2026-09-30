@@ -35,7 +35,7 @@ const deployRecurringBuy: DeployFunction = async function (hre: HardhatRuntimeEn
     args: [router, (BigInt(gasPrice) / WEIBAR_PER_TINYBAR) * RESERVE_MARGIN],
     log: true,
     autoMine: true,
-    gasLimit: "2000000", // deploying took 1.58M gas on the Hardhat network
+    gasLimit: "2500000", // deploying takes 1.66M gas on the Hardhat network; Hedera bills the gas used, not the limit
     gasPrice,
   });
 };
