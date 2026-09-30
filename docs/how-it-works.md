@@ -41,7 +41,7 @@ template.json        the manifest create-scaffold-hbar reads
 ## Known limitations
 
 - **Testnet and mainnet only.** Ticks need the Schedule Service, which a local chain does not have. The mainnet router address is taken from SaucerSwap's documentation and has not been exercised by us.
-- **A buy costs about 1.75 HBAR in gas whatever its size**, because each tick pays for scheduling the next one. Small, frequent buys are poor value.
+- **Small, frequent buys are poor value.** Most of a tick's gas pays for scheduling the next tick, not for the swap ([costs.md](costs.md#the-gas-deposit)).
 - **The reserve gas price is fixed at deployment**, at twice the relay's gas price of that moment. A tick never costs a plan more than its reservation. If the network's gas price in tinybar rises above the reserve price, ticks cost the contract more than plans pay for them, and the contract should be redeployed.
 - **The price floor is an absolute amount, set once.** If the price moves away for good, every tick is skipped, and each skipped tick still pays for scheduling the next one.
 - **One hop.** A plan swaps through a single SaucerSwap V2 pool. The token you spend must be an HTS token, so HBAR has to be wrapped first.
