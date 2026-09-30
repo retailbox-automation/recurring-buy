@@ -36,8 +36,8 @@ yarn hardhat:deploy:testnet      # deploys RecurringBuy to Hedera testnet, asks 
 
 ## Where things live
 
-- Contract: `packages/hardhat/contracts/RecurringBuy.sol`. Interfaces for the three things it calls are in `contracts/interfaces/`, their test stand-ins in `contracts/mocks/`.
-- Contract tests: `packages/hardhat/test/RecurringBuy.test.ts`. The fixture puts `MockScheduleService` at `0x16b` with `hardhat_setCode`. `runTick` plays the network: it replays the latest scheduled call from the contract's own address, with the scheduled gas limit.
+- Contract: `packages/hardhat/contracts/RecurringBuy.sol`. Interfaces for the four things it calls are in `contracts/interfaces/`, their test stand-ins in `contracts/mocks/`.
+- Contract tests: `packages/hardhat/test/RecurringBuy.test.ts`. The fixture puts `MockScheduleService` at `0x16b` and `MockTokenService` at `0x167` with `hardhat_setCode`. `runTick` plays the network: it replays the latest scheduled call from the contract's own address, with the scheduled gas limit.
 - Deploy script: `packages/hardhat/deploy/00_deploy_recurring_buy.ts`. After a deploy, the address and ABI are written to `packages/nextjs/contracts/deployedContracts.ts`.
 - The app's contract ABI: `packages/nextjs/utils/recurring-buy/abi.ts`, written out by hand so the app builds before any deployment and can read a contract it did not deploy. `abi.test.ts` compares it with the compiled artifact, so run `yarn hardhat:compile` before `yarn next:test`.
 - Plan history and status: `packages/nextjs/utils/recurring-buy/plan.ts` and `mirror.ts`. Hooks: `packages/nextjs/hooks/recurring-buy/useRecurringBuy.ts`. Screens: `packages/nextjs/components/recurring-buy/`, routes `/`, `/plans/new`, `/plans`.
@@ -50,6 +50,7 @@ yarn hardhat:deploy:testnet      # deploys RecurringBuy to Hedera testnet, asks 
 | | Testnet | Mainnet |
 | --- | --- | --- |
 | Hedera Schedule Service | `0x16b` | `0x16b` |
+| Hedera Token Service | `0x167` | `0x167` |
 | SaucerSwap V2 SwapRouter | `0.0.1414040` | `0.0.3949434` |
 | SaucerSwap V2 QuoterV2 | `0.0.1390002` | `0.0.3949424` |
 | WHBAR token | `0.0.15058` | `0.0.1456986` |
@@ -68,7 +69,7 @@ Each of these was learned on testnet or is a rule of the Schedule Service. Break
 6. **A plan pays for its own ticks.** The contract is the payer of every tick, so all plans share one HBAR balance. Scheduling a tick moves `tickGasLimit * reserveGasPrice` out of the plan's deposit. `_chargeTick` is the last statement of every path through `tick`: it charges the plan the gas used so far plus `SETTLEMENT_GAS`, at `tx.gasprice` capped by `reserveGasPrice`, and returns the rest of the reservation. It computes the gas used as `tickGasLimit - gasleft()`, which holds because a tick always runs with the gas limit its schedule was created with. Anything you add after `_chargeTick` has to fit in `SETTLEMENT_GAS`; the tests "charges a tick…" and "covers the settlement…" measure that from the opcode trace. That `tx.gasprice` inside a scheduled call equals the price Hedera bills for it is an assumption until the first live tick: compare a `TickCharged` event with the fee of its transaction.
 7. **`nonReentrant` on everything that moves money.** Tokens and pools are external code. The test "skips the tick when a token or pool calls back into the contract" shows what a callback could otherwise do.
 8. **Units.** Inside the EVM, HBAR is counted in tinybar (8 decimals): `msg.value`, `reserveGasPrice`, the deposit. Over JSON-RPC it is counted in weibar (18 decimals): the app multiplies the deposit by 10^10 before sending it as `value`, and the deploy script divides `eth_gasPrice` by 10^10. HTS amounts are `int64`.
-9. **HTS rules.** An account or contract must be associated with a token before it can receive it (HIP-719 `associate()`, sent to the token's address). The HTS facade's `transferFrom` reverts with no data when the allowance or the balance is short. The first plan for a spend token makes the contract associate itself and approve the router once (`_prepareToken`).
+9. **HTS rules.** An account or contract must be associated with a token before it can receive it (HIP-719 `associate()`, sent to the token's address). The HTS facade's `transferFrom` reverts with no data when the allowance or the balance is short. The first plan for a spend token makes the contract associate itself and approve the router once (`_prepareToken`), for the most the token accepts: the largest `int64` if its supply is infinite, its maximum supply if that is finite, read with `getTokenInfo` from the Token Service at `0x167`. A finite-supply token refuses anything above its maximum supply (D1). Every swap uses up part of that approval.
 
 Other limits worth knowing: a second with no capacity returns `SCHEDULE_EXPIRY_IS_BUSY` (370), which is why `_secondWithCapacity` probes later seconds; and the network caps how many times a contract may schedule recursive calls (`RECURSIVE_SCHEDULING_LIMIT_REACHED`, 374; about four million with typical configuration, according to the response code's description).
 
@@ -87,7 +88,6 @@ Other limits worth knowing: a second with no capacity returns `SCHEDULE_EXPIRY_I
 
 - **Another pair or fee tier:** nothing to change in the contract. A plan names `tokenIn`, `fee` and `tokenOut`; the form accepts any HTS token id. On testnet only the WHBAR/SAUCE pool at fee 3000 is known to exist (docs/testnet-findings.md).
 - **A multi-hop path:** `buy` builds the path with `abi.encodePacked(tokenIn, fee, tokenOut)`. Store a `bytes path` in the plan instead, and raise the gas estimates in `NewPlanForm.tsx`.
-- **Spending a finite-supply token:** `_prepareToken` approves the router for `2^63 - 1`, which such a token refuses (docs/testnet-findings.md, D1). Approve its maximum supply instead, read from the Token Service's token info, and test both kinds of token.
 - **A different action per tick** (rebalance, claim, pay): replace the body of `buy`. Keep it a self-call that reverts on failure, keep `tick` free of anything that can fail, and keep `_chargeTick` last.
 - **Spending HBAR directly:** a tick has no HBAR of the owner's to spend; the owner must hold WHBAR. Wrapping inside the contract would mean the contract holds the owner's funds between ticks, which this design avoids.
 

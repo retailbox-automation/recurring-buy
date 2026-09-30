@@ -24,6 +24,7 @@ export const recurringBuyAbi = parseAbi([
   "error InvalidPlan()",
   "error InsufficientGasDeposit(uint256 required)",
   "error AssociationFailed(address token, int64 responseCode)",
+  "error TokenInfoFailed(address token, int64 responseCode)",
   "error RouterApprovalFailed(address token)",
   "error ScheduleCallFailed(int64 responseCode)",
   "error OnlySelf()",

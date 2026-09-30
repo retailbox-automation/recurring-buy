@@ -44,3 +44,4 @@ Added:
 Third-party code inside our files:
 
 - `tools/gate/validate-template-json.mjs` contains a copy of the `template.json` zod schema from create-scaffold-hbar 0.4.0 `src/types.ts` (MIT, hedera-dev), so the gate validates the manifest exactly as the CLI parses it.
+- `packages/hardhat/contracts/interfaces/IHederaTokenService.sol` declares only `getTokenInfo`, with its result structs laid out field for field as in Hedera's `IHederaTokenService.sol` (`hashgraph/hedera-smart-contracts`, Apache-2.0): the result decodes only if the layout matches. It is not the starter's file of the same name, which was removed.

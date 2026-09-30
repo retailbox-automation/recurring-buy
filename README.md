@@ -69,7 +69,7 @@ On `/plans/new` you fill in the pair, the amount per buy, the period, the number
 | 2 | Approve the contract on the token you spend | The contract may take up to the plan's total, one buy at a time. Plans of one owner on the same token share this allowance | 727,020 gas, 0.79 HBAR |
 | 3 | Start the plan, with the gas deposit attached | Creates the plan and schedules its first tick | 1,643,976 gas, 1.79 HBAR, plus the deposit |
 
-The first plan on a contract for a given spend token costs more to start: the contract associates itself with that token and approves SaucerSwap's router, about 1.44 million gas (1.57 HBAR), once.
+The first plan on a contract for a given spend token costs more to start: the contract associates itself with that token, reads the token's supply from the Token Service and approves SaucerSwap's router for as much as the token allows, about 1.44 million gas (1.57 HBAR), once.
 
 After that nobody signs anything. Ticks are paid from the plan's **gas deposit**:
 
@@ -152,13 +152,13 @@ template.json        the manifest create-scaffold-hbar reads
 
 The app rebuilds a plan's history from the contract's events (`PlanCreated`, `TickScheduled`, `TickExecuted`, `TickSkipped`, `PlanStopped`, `GasDepositAdded`, `GasRefunded`) and from the mirror node's record of each schedule. That code is in `packages/nextjs/utils/recurring-buy/` and has no React in it, so its tests run on recorded mirror node responses: `yarn next:test`.
 
-Three Hedera services meet in one tick: the Schedule Service starts it (HIP-1215 `scheduleCall`, with `hasScheduleCapacity` before it and `deleteSchedule` at `stop`), the Token Service moves the tokens (an HTS allowance, HIP-719 association), and the Smart Contract Service runs the contract. The app reads the outcome from the mirror node.
+Three Hedera services meet in one tick: the Schedule Service starts it (HIP-1215 `scheduleCall`, with `hasScheduleCapacity` before it and `deleteSchedule` at `stop`), the Token Service moves the tokens (an HTS allowance, HIP-719 association, and `getTokenInfo` for the router's approval: a token with a finite supply accepts no more than its maximum supply), and the Smart Contract Service runs the contract. The app reads the outcome from the mirror node.
 
 ## Template checks
 
 | Command | What it checks |
 | --- | --- |
-| `yarn hardhat:test` | the contract, on mocks of the Schedule Service, an HTS token and the router |
+| `yarn hardhat:test` | the contract, on mocks of the Schedule Service, the Token Service, an HTS token and the router |
 | `yarn next:test` | the app's plan history and mirror node code, on recorded testnet responses |
 | `yarn saucerswap:test` | the SaucerSwap client |
 | `yarn lint` | all three packages |
@@ -188,7 +188,6 @@ The recipe, its pinned version and the steps for npm-based projects are in [.har
 - **The reserve gas price is fixed at deployment**, at twice the relay's gas price of that moment. A tick never costs a plan more than its reservation. If the network's gas price in tinybar rises above the reserve price, ticks cost the contract more than plans pay for them, and the contract should be redeployed.
 - **The price floor is an absolute amount, set once.** If the price moves away for good, every tick is skipped, and each skipped tick still pays for scheduling the next one.
 - **One hop.** A plan swaps through a single SaucerSwap V2 pool. The token you spend must be an HTS token, so HBAR has to be wrapped first.
-- **The token you spend must have an infinite supply**, like WHBAR. The contract approves SaucerSwap's router for the largest HTS amount, and a token with a finite supply (SAUCE, for example) refuses an allowance above its maximum supply, so a plan that spends it cannot start. Buying such a token works. See D1 in the testnet notes.
 - **A tick that reverts as a whole breaks the chain.** Pull and swap failures are caught, but a tick that runs out of gas takes its own bookkeeping with it: the contract still calls the plan active while nothing is scheduled. The app shows this as "Chain broken". `stop` recovers the deposit, but not that tick's reservation.
 - **If Hedera does not delete the pending schedule at `stop`**, that tick still runs, reverts, and its reservation stays in the contract.
 - **Ticks drift.** Inside a tick `block.timestamp` was one or two seconds before the scheduled second, and the next tick is scheduled one period after it, so each tick lands a second or two earlier than a whole period.

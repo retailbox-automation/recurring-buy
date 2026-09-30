@@ -8,7 +8,8 @@ import { IHRC719 } from "../interfaces/IHRC719.sol";
 /// @notice Test stand-in for an HTS fungible token seen through its EVM facade: ERC-20 plus HIP-719
 /// `associate()`. As on Hedera, an account cannot receive the token until it is associated with it, and
 /// `transferFrom` over the allowance or the balance reverts without revert data. With `quietFailure` set
-/// it returns false instead, as some ERC-20 tokens do.
+/// it returns false instead, as some ERC-20 tokens do. Given a maximum supply, the token refuses an
+/// allowance above it, as a finite-supply HTS token does (docs/testnet-findings.md, D1).
 contract MockHtsToken is ERC20, IHRC719 {
     int64 private constant SUCCESS = 22;
     int64 private constant TOKEN_ALREADY_ASSOCIATED_TO_ACCOUNT = 194;
@@ -16,10 +17,13 @@ contract MockHtsToken is ERC20, IHRC719 {
     uint8 private immutable _decimals;
     mapping(address account => bool) public associated;
     bool public quietFailure;
+    /// 0 for an infinite supply.
+    uint256 public maxSupply;
 
     event Associated(address indexed account);
 
     error TokenNotAssociatedToAccount(address account);
+    error AmountExceedsTokenMaxSupply();
 
     constructor(string memory name_, string memory symbol_, uint8 decimals_) ERC20(name_, symbol_) {
         _decimals = decimals_;
@@ -35,6 +39,15 @@ contract MockHtsToken is ERC20, IHRC719 {
 
     function setQuietFailure(bool quiet) external {
         quietFailure = quiet;
+    }
+
+    function setMaxSupply(uint256 maxSupply_) external {
+        maxSupply = maxSupply_;
+    }
+
+    function approve(address spender, uint256 value) public override returns (bool) {
+        if (maxSupply != 0 && value > maxSupply) revert AmountExceedsTokenMaxSupply();
+        return super.approve(spender, value);
     }
 
     function transferFrom(address from, address to, uint256 value) public override returns (bool) {

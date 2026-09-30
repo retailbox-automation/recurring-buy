@@ -6,6 +6,7 @@ import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.s
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import { IHederaScheduleService } from "./interfaces/IHederaScheduleService.sol";
+import { IHederaTokenService } from "./interfaces/IHederaTokenService.sol";
 import { IHRC719 } from "./interfaces/IHRC719.sol";
 import { ISaucerSwapV2Router } from "./interfaces/ISaucerSwapV2Router.sol";
 
@@ -71,6 +72,7 @@ contract RecurringBuy is ReentrancyGuard {
     }
 
     IHederaScheduleService private constant HSS = IHederaScheduleService(address(0x16b));
+    IHederaTokenService private constant HTS = IHederaTokenService(address(0x167));
     int64 private constant SUCCESS = 22;
     int64 private constant TOKEN_ALREADY_ASSOCIATED_TO_ACCOUNT = 194;
     /// HTS token amounts are int64.
@@ -115,6 +117,7 @@ contract RecurringBuy is ReentrancyGuard {
     error InvalidPlan();
     error InsufficientGasDeposit(uint256 required);
     error AssociationFailed(address token, int64 responseCode);
+    error TokenInfoFailed(address token, int64 responseCode);
     error RouterApprovalFailed(address token);
     error ScheduleCallFailed(int64 responseCode);
     error OnlySelf();
@@ -136,7 +139,7 @@ contract RecurringBuy is ReentrancyGuard {
     /// to the owner and the token, so plans of one owner on the same `tokenIn` share it, and revoking it
     /// stops all of them.
     /// @dev The first plan for a `tokenIn` also associates this contract with it (HIP-719) and approves
-    /// the router, which costs roughly 1.4M gas once.
+    /// the router for as much as the token accepts, which costs roughly 1.4M gas once.
     /// @param params See PlanParams. `minAmountOut` must be non-zero: a plan always has a price floor.
     /// @return planId The new plan's id.
     function start(PlanParams calldata params) external payable nonReentrant returns (uint256 planId) {
@@ -283,8 +286,16 @@ contract RecurringBuy is ReentrancyGuard {
             revert AssociationFailed(token, responseCode);
         }
         // The contract holds a slice only between the pull and the swap, so a standing allowance is safe.
-        if (!IERC20(token).approve(address(router), HTS_MAX_AMOUNT)) revert RouterApprovalFailed(token);
+        if (!IERC20(token).approve(address(router), _largestAllowance(token))) revert RouterApprovalFailed(token);
         tokenReady[token] = true;
+    }
+
+    /// @dev The largest allowance `token` accepts. HTS amounts are int64, and a token with a finite supply
+    /// refuses an allowance above its maximum supply (AMOUNT_EXCEEDS_TOKEN_MAX_SUPPLY).
+    function _largestAllowance(address token) private returns (uint256) {
+        (int64 responseCode, IHederaTokenService.TokenInfo memory info) = HTS.getTokenInfo(token);
+        if (responseCode != SUCCESS) revert TokenInfoFailed(token, responseCode);
+        return info.token.tokenSupplyType ? uint256(uint64(info.token.maxSupply)) : HTS_MAX_AMOUNT;
     }
 
     /// @dev Schedules tick(planId) one period from now, or at the first later second with capacity, and

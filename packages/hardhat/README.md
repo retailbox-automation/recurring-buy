@@ -5,8 +5,8 @@ The `RecurringBuy` contract, its tests and its deploy script. Commands below run
 ## Layout
 
 - `contracts/RecurringBuy.sol`: every plan lives in this one contract. The header comment explains what happens when a tick fails and how a plan pays for its ticks.
-- `contracts/interfaces/`: the three things the contract calls. `IHederaScheduleService` (HIP-1215 functions of the system contract at `0x16b`), `IHRC719` (token association) and `ISaucerSwapV2Router` (`exactInput`).
-- `contracts/mocks/`: test stand-ins for the Schedule Service, an HTS token and the router.
+- `contracts/interfaces/`: the four things the contract calls. `IHederaScheduleService` (HIP-1215 functions of the system contract at `0x16b`), `IHederaTokenService` (`getTokenInfo` of the system contract at `0x167`), `IHRC719` (token association) and `ISaucerSwapV2Router` (`exactInput`).
+- `contracts/mocks/`: test stand-ins for the Schedule Service, the Token Service, an HTS token and the router.
 - `test/RecurringBuy.test.ts`: the tests.
 - `deploy/00_deploy_recurring_buy.ts`: the hardhat-deploy script.
 - `scripts/`: deployer account helpers and `generateTsAbis.ts`, which writes `packages/nextjs/contracts/deployedContracts.ts` after a deploy.
@@ -18,7 +18,7 @@ The `RecurringBuy` contract, its tests and its deploy script. Commands below run
 yarn hardhat:test
 ```
 
-The Schedule Service exists only on Hedera, so the tests put `MockScheduleService` at `0x16b` and play the network's part themselves: `runTick` in the fixture sends the latest scheduled call from the contract's own address, with the gas limit it was scheduled with. The mocks keep the behaviour that matters: the HTS token refuses transfers to an account that is not associated and reverts with no data when an allowance is short, the router reverts with SaucerSwap's "Too little received" below the floor, and the Schedule Service returns response codes instead of reverting.
+The Schedule Service exists only on Hedera, so the tests put `MockScheduleService` at `0x16b` and `MockTokenService` at `0x167`, and play the network's part themselves: `runTick` in the fixture sends the latest scheduled call from the contract's own address, with the gas limit it was scheduled with. The mocks keep the behaviour that matters: the HTS token refuses transfers to an account that is not associated, reverts with no data when an allowance is short, and, given a maximum supply, refuses an allowance above it; the router reverts with SaucerSwap's "Too little received" below the floor; the Schedule Service returns response codes instead of reverting.
 
 The Hardhat network forks testnet through the hashio relay, so the tests need network access.
 
@@ -36,7 +36,7 @@ The Hardhat network forks testnet through the hashio relay, so the tests need ne
    ```
    It asks for the password of the key.
 
-The script deploys `RecurringBuy` with two constructor arguments: SaucerSwap's V2 SwapRouter for the network, and the reserve gas price, which is twice the gas price the relay reports (`eth_gasPrice`, converted from weibar to tinybar). Deployment takes about 1.66 million gas on the Hardhat network; the script sets a limit of 2.5 million.
+The script deploys `RecurringBuy` with two constructor arguments: SaucerSwap's V2 SwapRouter for the network, and the reserve gas price, which is twice the gas price the relay reports (`eth_gasPrice`, converted from weibar to tinybar). On testnet `eth_estimateGas` put the deployment at 2.38 million gas (2.18 million on the Hardhat network); the script sets a limit of 3 million.
 
 There is no shortcut script for mainnet: run this package's `deploy` script with `--network hederaMainnet`. The mainnet router address comes from SaucerSwap's documentation and has not been exercised by us.
 

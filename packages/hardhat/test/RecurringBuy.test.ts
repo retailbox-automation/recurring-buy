@@ -5,17 +5,21 @@ import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
 
 import type { TransactionResponse } from "ethers";
 
-import type { MockScheduleService } from "../typechain-types";
+import type { MockScheduleService, MockTokenService } from "../typechain-types";
 
 const HSS = ethers.getAddress("0x000000000000000000000000000000000000016b");
+const HTS = ethers.getAddress("0x0000000000000000000000000000000000000167");
 
 // HAPI response codes (ResponseCodeEnum ordinals).
 const SUCCESS = 22n;
 const INSUFFICIENT_PAYER_BALANCE = 10n;
+const INVALID_TOKEN_ID = 167n;
 const INVALID_SCHEDULE_ID = 201n;
 const SCHEDULE_EXPIRY_IS_BUSY = 370n;
 
 const INT64_MAX = 2n ** 63n - 1n;
+// SAUCE on testnet: supply type FINITE, maximum supply 10^15 in its smallest unit (docs/testnet-findings.md, D1).
+const SAUCE_MAX_SUPPLY = 10n ** 15n;
 
 // A daily buy of 0.05 WHBAR (8 decimals) for SAUCE (6 decimals) with a 95% price floor. The rate is what
 // the testnet WHBAR/SAUCE pool (fee 0.3%) paid for 0.05 WHBAR in a live run.
@@ -94,6 +98,14 @@ describe("RecurringBuy", function () {
     await network.provider.send("hardhat_setCode", [HSS, await ethers.provider.getCode(hssTemplate)]);
     const hss = hssFactory.attach(HSS) as MockScheduleService;
     await hss.setResponseCodes(SUCCESS, SUCCESS);
+
+    // The Token Service likewise, at 0x167. Every token it is asked about has an infinite supply until a test
+    // gives it a maximum.
+    const htsFactory = await ethers.getContractFactory("MockTokenService");
+    const htsTemplate = await htsFactory.deploy();
+    await network.provider.send("hardhat_setCode", [HTS, await ethers.provider.getCode(htsTemplate)]);
+    const hts = htsFactory.attach(HTS) as MockTokenService;
+    await hts.setResponseCode(SUCCESS);
 
     const whbar = await ethers.deployContract("MockHtsToken", ["Wrapped HBAR", "WHBAR", 8]);
     const sauce = await ethers.deployContract("MockHtsToken", ["SAUCE", "SAUCE", 6]);
@@ -183,6 +195,7 @@ describe("RecurringBuy", function () {
       recurringBuy,
       recurringBuyAddress,
       hss,
+      hts,
       whbar,
       sauce,
       router,
@@ -248,10 +261,48 @@ describe("RecurringBuy", function () {
       const { recurringBuy, recurringBuyAddress, whbar, router, bob, start } = await loadFixture(deployFixture);
 
       await expect(start()).to.emit(whbar, "Associated").withArgs(recurringBuyAddress);
+      // WHBAR has an infinite supply: the router may take the largest HTS amount.
       expect(await whbar.allowance(recurringBuy, router)).to.equal(INT64_MAX);
       expect(await recurringBuy.tokenReady(whbar)).to.equal(true);
 
       await expect(start(bob)).not.to.emit(whbar, "Associated");
+    });
+
+    it("approves the router for the maximum supply of a finite-supply token, which refuses anything more", async function () {
+      const { recurringBuy, hts, whbar, sauce, router, alice, planParams, runTick } = await loadFixture(deployFixture);
+      await sauce.setMaxSupply(SAUCE_MAX_SUPPLY);
+      await hts.setMaxSupply(sauce, SAUCE_MAX_SUPPLY);
+      // The mock refuses an allowance over the maximum supply, as SAUCE did on testnet.
+      await expect(sauce.connect(alice).approve(router, SAUCE_MAX_SUPPLY + 1n)).to.be.revertedWithCustomError(
+        sauce,
+        "AmountExceedsTokenMaxSupply",
+      );
+
+      // Alice spends SAUCE and buys WHBAR.
+      await router.associate(sauce);
+      await sauce.mint(alice, 3n * AMOUNT_PER_TICK);
+      await sauce.connect(alice).approve(recurringBuy, 3n * AMOUNT_PER_TICK);
+      await recurringBuy
+        .connect(alice)
+        .start(await planParams({ tokenIn: await sauce.getAddress(), tokenOut: await whbar.getAddress() }), {
+          value: 3n * RESERVE,
+        });
+      expect(await sauce.allowance(recurringBuy, router)).to.equal(SAUCE_MAX_SUPPLY);
+      expect(await recurringBuy.tokenReady(sauce)).to.equal(true);
+
+      const tick = runTick(1n);
+      await expect(tick).to.emit(recurringBuy, "TickExecuted").withArgs(1n, 1n, AMOUNT_PER_TICK, SAUCE_PER_TICK);
+      await expect(tick).to.changeTokenBalances(sauce, [alice, router], [-AMOUNT_PER_TICK, AMOUNT_PER_TICK]);
+      expect(await sauce.allowance(recurringBuy, router)).to.equal(SAUCE_MAX_SUPPLY - AMOUNT_PER_TICK);
+    });
+
+    it("reverts when the Token Service cannot describe the input token", async function () {
+      const { recurringBuy, hts, whbar, start } = await loadFixture(deployFixture);
+      await hts.setResponseCode(INVALID_TOKEN_ID);
+      await expect(start())
+        .to.be.revertedWithCustomError(recurringBuy, "TokenInfoFailed")
+        .withArgs(await whbar.getAddress(), INVALID_TOKEN_ID);
+      expect(await recurringBuy.tokenReady(whbar)).to.equal(false);
     });
 
     it("accepts a token the contract is already associated with (response code 194)", async function () {
