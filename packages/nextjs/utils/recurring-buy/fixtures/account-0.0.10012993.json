@@ -1,0 +1,10 @@
+{
+  "account": "0.0.10012993",
+  "balance": {
+    "balance": 66215509532,
+    "timestamp": "1790794232.144956459"
+  },
+  "deleted": false,
+  "evm_address": "0xa734fed00c784f223a46983742a18304c7027546",
+  "max_automatic_token_associations": -1
+}

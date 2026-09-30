@@ -143,6 +143,42 @@ export async function fetchTickCharge(mirror: Mirror, contractId: string, timest
   return transaction ? paidBy(transaction, contractId) : null;
 }
 
+export type MirrorAccount = {
+  accountId: string;
+  balanceTinybar: bigint;
+  /** Balances of the associated tokens among those asked for, by token id ("0.0.N"). */
+  tokens: Record<string, bigint>;
+};
+
+/**
+ * The Hedera account of `address` and its relationships with `tokens`; null when the address has no account yet. A
+ * token is associated only if the mirror node lists a relationship with it: an account that could associate it
+ * automatically has none until the token arrives.
+ */
+export async function fetchMirrorAccount(
+  mirror: Mirror,
+  address: string,
+  tokens: string[],
+): Promise<MirrorAccount | null> {
+  const account = await mirror.get<{ account: string; deleted: boolean; balance: { balance: number } }>(
+    `/accounts/${address}?transactions=false`,
+  );
+  if (!account || account.deleted) return null;
+  const held = await Promise.all(
+    tokens.map(token =>
+      mirror.get<{ tokens: { token_id: string; balance: number }[] }>(
+        `/accounts/${account.account}/tokens?token.id=${hederaIdOf(token)}`,
+      ),
+    ),
+  );
+  const entries = held.flatMap(found => found?.tokens ?? []);
+  return {
+    accountId: account.account,
+    balanceTinybar: BigInt(account.balance.balance),
+    tokens: Object.fromEntries(entries.map(t => [t.token_id, BigInt(t.balance)])),
+  };
+}
+
 /** Tinybar per gas: `contractCall` for a scheduled tick, `ethereumTransaction` for what a wallet sends. */
 export type GasPrice = { contractCall: bigint; ethereumTransaction: bigint };
 

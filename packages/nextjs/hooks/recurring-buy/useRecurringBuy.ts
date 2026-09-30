@@ -14,7 +14,13 @@ import * as chains from "viem/chains";
 import { usePublicClient } from "wagmi";
 import { useTargetNetwork } from "~~/hooks/scaffold-hbar";
 import scaffoldConfig, { type ReferencePlan } from "~~/scaffold.config";
-import { type Mirror, createMirror, fetchGasPrice, fetchTickCharge } from "~~/utils/recurring-buy/mirror";
+import {
+  type Mirror,
+  createMirror,
+  fetchGasPrice,
+  fetchMirrorAccount,
+  fetchTickCharge,
+} from "~~/utils/recurring-buy/mirror";
 import { type PlanView, loadContractEvents, plansOwnedBy, resolvePlan } from "~~/utils/recurring-buy/plan";
 import { contracts } from "~~/utils/scaffold-hbar/contract";
 
@@ -225,39 +231,12 @@ export function useHederaFees(chainId: number) {
   };
 }
 
-export type MirrorAccount = {
-  accountId: string;
-  balanceTinybar: bigint;
-  /** Balances of the associated tokens among those asked for, by lowercase long-zero address. */
-  tokens: Record<string, bigint>;
-};
-
 /** The wallet's Hedera account from the mirror node; null when the address has no account yet. */
 export function useMirrorAccount(network: RecurringBuyNetwork, address: string | undefined, tokens: string[]) {
   const { mirror, chainId } = network;
   return useQuery({
     queryKey: ["recurring-buy", "account", chainId, address, tokens.map(t => t.toLowerCase()).join()],
-    queryFn: async (): Promise<MirrorAccount | null> => {
-      const account = await mirror!.get<{
-        account: string;
-        deleted: boolean;
-        balance: { balance: number };
-      }>(`/accounts/${address}?transactions=false`);
-      if (!account || account.deleted) return null;
-      const held = await Promise.all(
-        tokens.map(token =>
-          mirror!.get<{ tokens: { token_id: string; balance: number }[] }>(
-            `/accounts/${account.account}/tokens?token.id=0.0.${BigInt(token)}`,
-          ),
-        ),
-      );
-      const entries = held.flatMap(found => found?.tokens ?? []);
-      return {
-        accountId: account.account,
-        balanceTinybar: BigInt(account.balance.balance),
-        tokens: Object.fromEntries(entries.map(t => [hederaIdToLongZeroAddress(t.token_id), BigInt(t.balance)])),
-      };
-    },
+    queryFn: () => fetchMirrorAccount(mirror!, address!, tokens),
     enabled: Boolean(mirror && address),
     refetchInterval: 10_000,
   });

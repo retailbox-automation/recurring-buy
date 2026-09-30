@@ -1,10 +1,10 @@
-import type { GasPrice } from "./mirror";
+import { type GasPrice, type MirrorAccount, hederaIdOf } from "./mirror";
 
-/** Gas this template's transactions used on testnet (docs/testnet-findings.md, runs E and F). */
+/** Gas this template's transactions used on testnet (docs/testnet-findings.md, runs E and G). */
 export const MEASURED_GAS = {
   /** HIP-719 `associate()` (A1, E). */
   associate: 726_488n,
-  /** WhbarHelper `deposit()` into an account associated with WHBAR (F1). */
+  /** WhbarHelper `deposit()` into an account associated with WHBAR (G1). */
   wrap: 77_966n,
   /** `approve` on the spend token (E). */
   approve: 727_032n,
@@ -38,6 +38,20 @@ export type WalletState = {
   balanceIn?: bigint;
   allowance?: bigint;
 };
+
+/** A wallet's state from its mirror node account: it holds a token only if it is associated with it. */
+export function walletState(
+  account: MirrorAccount,
+  { tokenIn, tokenOut, allowance }: { tokenIn: string | null; tokenOut: string | null; allowance?: bigint },
+): WalletState {
+  const balance = (token: string | null) => (token ? account.tokens[hederaIdOf(token)] : undefined);
+  return {
+    holdsOut: balance(tokenOut) !== undefined,
+    holdsIn: balance(tokenIn) !== undefined,
+    balanceIn: tokenIn ? (balance(tokenIn) ?? 0n) : undefined,
+    allowance,
+  };
+}
 
 /**
  * The transactions a person signs to start a plan that spends `need` of the spend token in total, in order. The buy

@@ -15,7 +15,6 @@ import {
   useWriteContract,
 } from "wagmi";
 import {
-  type MirrorAccount,
   type RecurringBuyNetwork,
   defaultRoute,
   useGasPrice,
@@ -29,7 +28,15 @@ import {
 } from "~~/hooks/recurring-buy/useRecurringBuy";
 import { useTransactor } from "~~/hooks/scaffold-hbar";
 import { recurringBuyAbi } from "~~/utils/recurring-buy/abi";
-import { type SignStep, gasLimitFor, stepsToSign, tickCost } from "~~/utils/recurring-buy/costs";
+import {
+  type SignStep,
+  type WalletState,
+  gasLimitFor,
+  stepsToSign,
+  tickCost,
+  walletState,
+} from "~~/utils/recurring-buy/costs";
+import { type MirrorAccount, hederaIdOf } from "~~/utils/recurring-buy/mirror";
 import { type PlanParams, ticksRun } from "~~/utils/recurring-buy/plan";
 
 /**
@@ -236,26 +243,16 @@ const PlanBuilder = ({ network, contract }: { network: RecurringBuyNetwork; cont
   // Until the owner's other plans are read, what they still need from the allowance is unknown.
   const sharingKnown = ownerPlans.isSuccess || !address;
 
-  // Undefined while the account loads; a token missing from `tokens` is not associated.
-  const held = account.data?.tokens ?? {};
-  const inBalance = tokenIn && account.data ? (held[tokenIn.toLowerCase()] ?? 0n) : undefined;
-  const inAssociated = Boolean(tokenIn && held[tokenIn.toLowerCase()] !== undefined);
-  const outAssociated = Boolean(tokenOut && held[tokenOut.toLowerCase()] !== undefined);
+  // Empty while the account loads.
+  const wallet: WalletState =
+    address && account.data
+      ? walletState(account.data, { tokenIn, tokenOut, allowance: sharingKnown ? allowance : undefined })
+      : {};
+  const inBalance = wallet.balanceIn;
+  const inAssociated = wallet.holdsIn === true;
+  const outAssociated = wallet.holdsOut === true;
 
-  const steps = stepsToSign({
-    spendIsWhbar,
-    need: neededAllowance,
-    tokenReady,
-    wallet:
-      address && account.data
-        ? {
-            holdsOut: outAssociated,
-            holdsIn: inAssociated,
-            balanceIn: inBalance,
-            allowance: sharingKnown ? allowance : undefined,
-          }
-        : {},
-  });
+  const steps = stepsToSign({ spendIsWhbar, need: neededAllowance, tokenReady, wallet });
   const shortfall = address && account.data ? (steps.find(step => step.kind === "wrap")?.amount ?? 0n) : 0n;
   const showWrap = spendIsWhbar && (shortfall > 0n || wrapped);
   const wrapAmount = wrapInput === null ? shortfall : parseAmount(wrapInput, HBAR_DECIMALS);
@@ -316,7 +313,7 @@ const PlanBuilder = ({ network, contract }: { network: RecurringBuyNetwork; cont
         const gas = gasLimitFor(await publicClient!.estimateGas(request));
         return sendTransactionAsync({ to: token, data: request.data, gas, chainId, ...(await fees()) });
       },
-      () => refetchAccountUntil(data => data?.tokens[token.toLowerCase()] !== undefined),
+      () => refetchAccountUntil(data => data?.tokens[hederaIdOf(token)] !== undefined),
     );
 
   const wrap = () => {
@@ -332,7 +329,7 @@ const PlanBuilder = ({ network, contract }: { network: RecurringBuyNetwork; cont
       async () => {
         setWrapped(true);
         setWrapInput(null);
-        await refetchAccountUntil(data => (data?.tokens[tokenIn!.toLowerCase()] ?? 0n) > before);
+        await refetchAccountUntil(data => (data?.tokens[hederaIdOf(tokenIn!)] ?? 0n) > before);
       },
     );
   };
