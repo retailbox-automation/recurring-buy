@@ -5,7 +5,7 @@ import { minOut } from "../src/quote.js";
 
 test("minOut takes slippageBps off the quote with integer math", () => {
   assert.equal(minOut(100_000_000n, 100), 99_000_000n); // 1% slippage
-  assert.equal(minOut(46_336_444n, 100), 45_873_079n); // matches spike S2's minOut exactly
+  assert.equal(minOut(46_336_444n, 100), 45_873_079n); // the floor of testnet swap S2
 });
 
 test("minOut at 0 bps returns the quote unchanged", () => {

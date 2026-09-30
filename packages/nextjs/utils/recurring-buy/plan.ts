@@ -201,7 +201,7 @@ function fromSchedule(lookup: ScheduleLookup | undefined): TickOutcome {
 /**
  * Whether the plan's chain of ticks is still going, from the last tick's schedule, not from the contract's `active`
  * flag: a tick that reverts as a whole takes its own bookkeeping with it, so `active` stays true while nothing is
- * scheduled any more (spike N1, negative control).
+ * scheduled any more (docs/testnet-findings.md, B9).
  */
 export function chainStatus(events: PlanEvent[], ticks: TickRow[]): ChainStatus {
   const stop = events.findLast(event => event.type === "PlanStopped");

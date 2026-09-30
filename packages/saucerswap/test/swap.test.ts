@@ -13,14 +13,14 @@ import {
 
 const WHBAR = TESTNET_ADDRESSES.whbar;
 const SAUCE = "0x0000000000000000000000000000000000120f46" as const; // testnet SAUCE token 0.0.1183558
-const recipient = hederaIdToLongZeroAddress("0.0.10702176"); // "H" from docs/research/spike-swap-2026-09-24.md
+const recipient = hederaIdToLongZeroAddress("0.0.10702176"); // the person's account in run A of docs/testnet-findings.md
 
 const params: ExactInputParams = {
   path: encodeSingleHopPath(WHBAR, 3000, SAUCE),
   recipient,
   deadline: 1_790_275_104n,
   amountIn: 100_000_000n, // 1 HBAR, in tinybar
-  amountOutMinimum: 45_873_079n, // spike S2's exact minOut
+  amountOutMinimum: 45_873_079n, // the floor of testnet swap S2
 };
 
 test("tinybarToWeibar matches the 1e10 factor the relay uses", () => {

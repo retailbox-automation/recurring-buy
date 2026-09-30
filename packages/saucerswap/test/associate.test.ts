@@ -21,7 +21,7 @@ function stubFetch(status: number, body: unknown): typeof fetch {
 }
 
 test("isAssociatedViaMirror is true when the token is in the mirror response", async () => {
-  // shape of the real S1 response after association (docs/research/spike-swap-2026-09-24.md).
+  // shape of the real S1 response after association (docs/testnet-findings.md).
   const fixture = { tokens: [{ token_id: "0.0.1183558", balance: 0, automatic_association: false }] };
   const result = await isAssociatedViaMirror(
     "https://testnet.mirrornode.hedera.com/api/v1",

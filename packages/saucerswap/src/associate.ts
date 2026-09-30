@@ -13,8 +13,8 @@ export const hip719Abi = parseAbi([
 /**
  * Calldata for HIP-719 `associate()` — send it `to` the TOKEN's address, from the
  * account to associate. Costs real gas even though the token has no code of its
- * own: ~726k gas / ~0.79 HBAR on testnet (docs/PLATFORM-FINDINGS.md F9,
- * docs/research/spike-swap-2026-09-24.md S1) — surface that cost before sending it.
+ * own: ~726k gas / ~0.79 HBAR on testnet (docs/testnet-findings.md, A1) — surface that cost
+ * before sending it.
  */
 export const associateCalldata = (): Hex => encodeFunctionData({ abi: hip719Abi, functionName: "associate" });
 
@@ -24,8 +24,8 @@ export type MirrorTokenRelationship = { token_id: string };
 /**
  * Reads whether `accountId` ("0.0.N") is associated with `tokenId` ("0.0.N") from
  * the mirror node's REST API — free, no RPC/gas cost, and works even for an
- * account with no EVM alias yet (docs/research/spike-swap-2026-09-24.md S1 read
- * this same endpoint to prove the association). `fetchImpl` defaults to the
+ * account with no EVM alias yet (test S1 in docs/testnet-findings.md read this same
+ * endpoint to prove the association). `fetchImpl` defaults to the
  * global `fetch`; pass a stub in tests.
  */
 export async function isAssociatedViaMirror(

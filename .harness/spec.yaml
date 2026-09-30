@@ -1,10 +1,10 @@
 schemaVersion: 3
 
-name: countersign
+name: recurring-buy
 description: >-
-  Hedera scaffold-hbar template (work in progress). Until the feature increments
-  are written, this recipe is the template's own quality check: install, lint,
-  build, test, no secrets, and the core routes render.
+  Recurring buys on SaucerSwap V2, run by the Hedera Schedule Service. No feature
+  increments are written yet, so this recipe is the template's own quality check:
+  install, lint, build, test, no secrets, and the core routes render.
 
 # Yarn recipe. create-scaffold-hbar does not rewrite .harness/ for npm projects;
 # in an npm project point validators.commands at .harness/validators/npm.json
@@ -16,7 +16,7 @@ baseline:
     - name: build
       command: yarn next:build
 
-# prd: feature increments (.harness/prds/NN-*.md) are added here once the concept is chosen.
+# prd: feature increments (.harness/prds/NN-*.md) go here.
 
 validators:
   static: .harness/validators/static.json

@@ -68,10 +68,9 @@ export type DecodedSwapCall =
 /**
  * Turns router calldata back into a plain structure — for a "what you're about to
  * sign" screen, or to assert what an agent proposed. Throws if `data` does not
- * match any function on `routerAbi`. docs/research/spike-swap-2026-09-24.md
- * finding 12 calls this "clear-signing": a dApp must show this, not just rely on
- * the wallet's own receipt (finding 4 — a wallet shows SUCCESS even when the
- * scheduled swap itself reverted).
+ * match any function on `routerAbi`. An app should show this and not rely on the
+ * wallet's own receipt: a wallet shows SUCCESS even when the scheduled swap itself
+ * reverted (docs/testnet-findings.md, A12 and A4).
  */
 export function describeSwapCalldata(data: Hex): DecodedSwapCall {
   const decoded = decodeFunctionData({ abi: routerAbi, data });

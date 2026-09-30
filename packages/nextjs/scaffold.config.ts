@@ -55,6 +55,7 @@ const scaffoldConfig = {
 
   referencePlan: {
     chainId: chains.hederaTestnet.id,
+    // TODO(deploy): the address of the testnet RecurringBuy that runs this template's reference plan.
     contract: null,
     planId: 1n,
   },

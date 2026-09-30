@@ -1,6 +1,6 @@
 {
-  "name": "countersign",
-  "description": "Hedera scaffold-hbar template — work in progress.",
+  "name": "recurring-buy",
+  "description": "Recurring buys on SaucerSwap V2 that the Hedera Schedule Service runs by itself: no keeper bot, and the tokens stay in the owner's wallet under an HTS allowance.",
   "create-scaffold-hbar": {
     "capabilities": {
       "frontend": ["nextjs-app"],
@@ -18,8 +18,12 @@
           "title": "Next steps",
           "steps": [
             {
-              "label": "Start the frontend",
+              "label": "Look at the app (no wallet or .env needed)",
               "command": "{run:next:dev}"
+            },
+            {
+              "label": "Run the contract tests",
+              "command": "{run:framework:test}"
             },
             {
               "label": "Generate or import a deployer account",
@@ -30,8 +34,12 @@
               "url": "https://portal.hedera.com/faucet"
             },
             {
-              "label": "Deploy the contracts to Hedera testnet",
+              "label": "Deploy RecurringBuy to Hedera testnet",
               "command": "{run:framework:deploy:testnet}"
+            },
+            {
+              "label": "Start a plan",
+              "text": "Open /plans/new in the app, with a wallet on Hedera Testnet."
             },
             {
               "label": "Develop with Hedera Harness",

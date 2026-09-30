@@ -1,5 +1,5 @@
 {
-  "name": "countersign-yarn",
+  "name": "recurring-buy-yarn",
   "description": "Install, lint, build and test with Yarn. Keep the install step named \"install\" so the harness can skip it when dependencies are unchanged.",
   "requiresNoSecrets": true,
   "forbiddenCommands": ["npm install", "npm run", "pnpm install", "pnpm run"],

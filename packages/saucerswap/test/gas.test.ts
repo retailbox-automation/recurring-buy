@@ -11,7 +11,7 @@ test("recommendedSwapGasLimit never drops below the observed testnet floor", () 
   assert.equal(recommendedSwapGasLimit(10_000n), SWAP_GAS_LIMIT_FLOOR);
 });
 
-test("the quoter's low estimate, padded, still lands under the floor (finding 6)", () => {
+test("the quoter's low estimate, padded, still lands under the floor (testnet finding A6)", () => {
   // QuoterV2 returned ~92,234-92,237 gas on testnet; the real swap needed ~200k.
   assert.equal(recommendedSwapGasLimit(92_237n), SWAP_GAS_LIMIT_FLOOR); // 92237 * 1.2 = 110,684 < floor
 });

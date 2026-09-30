@@ -1,6 +1,7 @@
-// Events here are encoded with the template's ABI: the template's RecurringBuy is not on testnet yet, and the spike's
-// contract emitted other events. The schedules and executions they point at are real testnet records from the N1
-// spike (see mirror.test.ts): its negative control, a tick that reverted as a whole, and spike-swap's expired schedule.
+// Events here are encoded with the template's ABI: the template's RecurringBuy is not on testnet yet, and the
+// prototype's contract emitted other events. The schedules and executions they point at are real testnet records from
+// the prototype runs (docs/testnet-findings.md, see mirror.test.ts): run B's negative control, a tick that reverted as
+// a whole, and run A's expired schedule (S4).
 import { recurringBuyAbi } from "./abi";
 import contractRecord from "./fixtures/contract-spike.json";
 import spikeLogs from "./fixtures/logs-spike-contract.json";
@@ -106,7 +107,7 @@ describe("decodePlanLog", () => {
   });
 
   it("ignores logs of other contracts and other event signatures", () => {
-    // The spike's own contract emitted Ticked/Scheduled/Stopped, which RecurringBuy does not have.
+    // The prototype's contract emitted Ticked/Scheduled/Stopped, which RecurringBuy does not have.
     assert.equal(spikeLogs.logs.length, 8);
     assert.deepEqual(decodeAll(spikeLogs.logs as MirrorLog[]), []);
   });

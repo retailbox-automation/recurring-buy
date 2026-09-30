@@ -1,5 +1,5 @@
 {
-  "name": "countersign-npm",
+  "name": "recurring-buy-npm",
   "description": "The same checks for a project scaffolded with --package-manager npm. Point validators.commands at this file in such a project.",
   "requiresNoSecrets": true,
   "forbiddenCommands": ["yarn install", "yarn run", "pnpm install", "pnpm run"],

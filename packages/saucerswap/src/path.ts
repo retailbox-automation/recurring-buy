@@ -5,7 +5,7 @@ import { type Address, type Hex, encodePacked } from "viem";
  * interleaved with the pool fee (in hundredths of a bip) between each hop —
  * `tokenIn(20 bytes) | fee(3 bytes) | tokenOut(20 bytes) | fee(3 bytes) | ...`
  * (docs.saucerswap.finance/developers/v2/swap; verified against a live
- * quoteExactInput call on testnet, docs/research/spike-swap-2026-09-24.md).
+ * quoteExactInput call on testnet, docs/testnet-findings.md).
  */
 export type SwapPath = { tokens: readonly Address[]; fees: readonly number[] };
 

@@ -1,7 +1,7 @@
 import type { Hex } from "viem";
 
-// Mirror node REST records, only the fields the app reads. Checked against testnet responses for the N1 spike
-// (docs/research/spike-n1-2026-09-29.md); utils/recurring-buy/fixtures holds those responses.
+// Mirror node REST records, only the fields the app reads. Checked against testnet responses for the prototype run
+// (docs/testnet-findings.md, run B); utils/recurring-buy/fixtures holds those responses.
 
 export type MirrorLog = {
   address: string;
@@ -87,13 +87,13 @@ export type ScheduleState = "waiting" | "due" | "missed" | "executed" | "deleted
 
 /**
  * How long past its expiry second a schedule may show no execution before it counts as missed. Hedera ran the
- * spike's ticks 0.04-0.17 s after expiry; the rest is mirror node indexing delay.
+ * prototype's ticks 0.04-0.17 s after expiry; the rest is mirror node indexing delay.
  */
 export const MISSED_AFTER_SECONDS = 60;
 
 /**
  * The state of a schedule from its mirror record. The mirror node never marks a schedule as expired: one Hedera did not
- * run keeps `executed_timestamp: null` and `deleted: false` forever (spike-swap finding 7), so "missed" is computed here
+ * run keeps `executed_timestamp: null` and `deleted: false` forever (docs/testnet-findings.md, A7), so "missed" is computed here
  * from the clock.
  */
 export function scheduleState(schedule: MirrorSchedule, nowSeconds: number): ScheduleState {
@@ -107,7 +107,7 @@ export function scheduleState(schedule: MirrorSchedule, nowSeconds: number): Sch
 /**
  * The execution a schedule ran, read by its consensus timestamp under the contract that ran it. Not by
  * `/contracts/results/{transactionId}?nonce=N`: a scheduled tick inherits the transaction id and nonce of the HIP-1215
- * call that created its schedule, so that URL can return the scheduling call instead (spike N1 finding 7). Not by
+ * call that created its schedule, so that URL can return the scheduling call instead (docs/testnet-findings.md, B7). Not by
  * `/contracts/results?timestamp=…` either: that list hides a scheduled call unless `internal=true` is passed.
  */
 export async function fetchExecution(

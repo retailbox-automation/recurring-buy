@@ -20,7 +20,7 @@ test(
     const client = createSaucerSwapClient("testnet");
 
     // WHBAR/SAUCE only has a live pool at the 3000 (0.3%) fee tier
-    // (docs/research/spike-swap-2026-09-24.md: fee 500/1500/10000 all returned no pool).
+    // (docs/testnet-findings.md: fee 500/1500/10000 all returned no pool).
     const path = encodeSingleHopPath(TESTNET_ADDRESSES.whbar, 3000, SAUCE);
     const quote = await quoteExactInput(client, TESTNET_ADDRESSES.quoter, path, 100_000_000n); // 1 HBAR
     assert.ok(quote.amountOut > 0n, `expected a positive quote, got ${quote.amountOut}`);

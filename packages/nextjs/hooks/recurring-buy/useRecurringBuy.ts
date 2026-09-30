@@ -275,7 +275,7 @@ export function useQuote(
   });
 }
 
-/** The default pair for a network: WHBAR to SAUCE on testnet, the pool the spikes swapped through. */
+/** The default pair for a network: WHBAR to SAUCE on testnet, the pool the prototypes swapped through. */
 export function defaultRoute(chainId: number): { tokenIn: string; fee: number; tokenOut: string } | null {
   if (chainId !== ENDPOINTS.testnet.chainId) return null;
   return { tokenIn: ADDRESSES.testnet.whbar, fee: 3000, tokenOut: hederaIdToLongZeroAddress("0.0.1183558") };

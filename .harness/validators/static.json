@@ -1,5 +1,5 @@
 {
-  "name": "countersign-static",
+  "name": "recurring-buy-static",
   "description": "Files and manifest values the template must keep. template.json is asserted only where it exists: the CLI deletes it from scaffolded projects.",
   "jsonAssertions": [
     { "file": "template.json", "path": "create-scaffold-hbar.capabilities.frontend", "equals": ["nextjs-app"] },

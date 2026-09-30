@@ -1,5 +1,5 @@
-// Fixtures are testnet mirror node responses for the N1 spike's objects (docs/research/spike-n1-2026-09-29.md and
-// spike-swap-2026-09-24.md), fetched 2026-09-29. contract-spike.json keeps four fields of /contracts/0.0.10777783;
+// Fixtures are testnet mirror node responses for objects of the two prototype runs (docs/testnet-findings.md),
+// fetched 2026-09-29. contract-spike.json keeps four fields of /contracts/0.0.10777783;
 // every other file is the full response body.
 import negativeByNonce from "./fixtures/result-negative-by-nonce.json";
 import negativeByTimestamp from "./fixtures/result-negative-by-timestamp.json";

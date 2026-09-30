@@ -31,11 +31,12 @@ import { recurringBuyAbi } from "~~/utils/recurring-buy/abi";
 import { type PlanParams, ticksRun } from "~~/utils/recurring-buy/plan";
 
 /**
- * Gas limit of every tick. A tick that pulled, swapped and scheduled the next one used 1,622,904 gas on testnet
- * (docs/research/spike-n1-2026-09-29.md); the contract keeps RESCHEDULE_GAS of it back for the next schedule.
+ * Gas limit of every tick. A tick that pulled, swapped and scheduled the next one used 1,622,904 gas in the prototype
+ * on testnet (docs/testnet-findings.md, B5); the contract keeps RESCHEDULE_GAS of it back for the next schedule.
+ * TODO(deploy): set both constants from a tick of this template's own contract.
  */
 const TICK_GAS_LIMIT = 1_900_000n;
-/** Gas one tick used on testnet, for the estimate of what Hedera charges per tick. */
+/** Gas one tick used on testnet, for the estimate of what a tick costs. */
 const TICK_GAS_USED = 1_622_904n;
 /** JSON-RPC counts HBAR in weibar (18 decimals), the EVM and the contract in tinybar (8). */
 const WEIBAR_PER_TINYBAR = 10_000_000_000n;

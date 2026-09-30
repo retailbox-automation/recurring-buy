@@ -19,11 +19,11 @@ const { data, valueWeibar } = buildSwapFromHbarCalldata({
   path, recipient: humanEvmAddress, deadline: BigInt(Math.floor(Date.now() / 1000) + 600),
   amountIn: 100_000_000n, amountOutMinimum: minOut(quote.amountOut, 100), // 1% slippage
 });
-// send { to: TESTNET_ADDRESSES.router, data, value: valueWeibar } however the concept
+// send { to: TESTNET_ADDRESSES.router, data, value: valueWeibar } however your app
 // signs transactions — a wallet, or a Hedera scheduled ContractCall.
 ```
 
-From a Next.js concept in this workspace: `import { ... } from "@sh/saucerswap"` after
+From the Next.js app in this workspace: `import { ... } from "@sh/saucerswap"` after
 `yarn saucerswap:build` (or add `"@sh/saucerswap"` to `next.config.ts`'s
 `transpilePackages` to import the TypeScript source directly, no build step needed).
 
@@ -37,9 +37,9 @@ saucerswap:test:live` additionally calls `quoteExactInput` and `eth_gasPrice`
 against the live Hedera testnet RPC (skipped by default, so the eligibility gate
 never depends on testnet being reachable).
 
-Every constant and gas figure traces to a live testnet run:
-`docs/research/spike-swap-2026-09-24.md` (5 scheduled swaps, S1-S5) and
-`docs/PLATFORM-FINDINGS.md` (F3, F8, F9).
+Every constant and gas figure traces to a live testnet run, recorded in the
+repository's [docs/testnet-findings.md](../../docs/testnet-findings.md) (run A:
+five scheduled swaps, S1-S5).
 
 ## License
 

@@ -14,7 +14,7 @@ export type SaucerSwapAddresses = {
 
 /**
  * Verified live against docs.saucerswap.finance/developers/contracts.md and a real
- * scheduled testnet swap (docs/research/spike-swap-2026-09-24.md S1-S5) on 2026-09-24.
+ * scheduled testnet swap (docs/testnet-findings.md, S1-S5) on 2026-09-24.
  */
 export const TESTNET_ADDRESSES: SaucerSwapAddresses = {
   whbar: "0x0000000000000000000000000000000000003ad2", // WHBAR token 0.0.15058
