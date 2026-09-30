@@ -36,7 +36,7 @@ The Hardhat network forks testnet through the hashio relay, so the tests need ne
    ```
    It asks for the password of the key.
 
-The script deploys `RecurringBuy` with two constructor arguments: SaucerSwap's V2 SwapRouter for the network, and the reserve gas price, which is twice the gas price the relay reports (`eth_gasPrice`, converted from weibar to tinybar). On testnet `eth_estimateGas` put the deployment at 2.38 million gas (2.18 million on the Hardhat network); the script sets a limit of 3 million.
+The script deploys `RecurringBuy` with two constructor arguments: SaucerSwap's V2 SwapRouter for the network, and the reserve gas price, which is twice the gas price the relay reports (`eth_gasPrice`, converted from weibar to tinybar). On testnet on 2026-09-30 the deployment used 2,176,533 gas, 2.37 HBAR (`eth_estimateGas` had said 2.38 million); the script sets a limit of 3 million.
 
 There is no shortcut script for mainnet: run this package's `deploy` script with `--network hederaMainnet`. The mainnet router address comes from SaucerSwap's documentation and has not been exercised by us.
 
@@ -44,4 +44,15 @@ On `hardhat` and `localhost` the script deploys nothing, because a local chain h
 
 ## Verify the source
 
-`yarn hardhat:verify:testnet` runs `hardhat verify --network hederaTestnet`, configured for Sourcify, which Hashscan reads. On 2026-09-24 it did not work for us: hardhat-verify 2.1.3 calls Sourcify's v1 API, and `https://sourcify.dev/server/check-all-by-addresses` answered with a 404 page ("Unexpected token '<'"). Sourcify's v2 API verified the contract we had deployed that day: `POST https://sourcify.dev/server/v2/verify/296/<address>` with the standard JSON input that hardhat-deploy keeps under `deployments/hederaTestnet/solcInputs/` returned an exact runtime match.
+`yarn hardhat:verify:testnet` runs `hardhat verify --network hederaTestnet`, configured for Sourcify, which Hashscan reads. On 2026-09-24 it did not work for us: hardhat-verify 2.1.3 calls Sourcify's v1 API, and `https://sourcify.dev/server/check-all-by-addresses` answered with a 404 page ("Unexpected token '<'"). Sourcify's v2 API verified the contract we had deployed that day: `POST https://sourcify.dev/server/v2/verify/296/<address>` with the standard JSON input that hardhat-deploy keeps under `deployments/hederaTestnet/solcInputs/` returned an exact runtime match. On 2026-09-30 the same call verified this template's `RecurringBuy` (exact match of creation and runtime code). The body:
+
+```json
+{
+  "stdJsonInput": "<the JSON file under deployments/hederaTestnet/solcInputs/>",
+  "compilerVersion": "0.8.28+commit.7893614a",
+  "contractIdentifier": "contracts/RecurringBuy.sol:RecurringBuy",
+  "creationTransactionHash": "<the deploy transaction's hash>"
+}
+```
+
+The answer carries a `verificationId`; `GET https://sourcify.dev/server/v2/verify/<verificationId>` shows the result once the job completes.

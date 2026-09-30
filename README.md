@@ -55,7 +55,7 @@ yarn hardhat:deploy:testnet     # asks for the key's password
 
 Fund the deployer's address from the faucet between the two commands. The deploy script (`packages/hardhat/deploy/00_deploy_recurring_buy.ts`) passes the contract two things: SaucerSwap's V2 router for the network, and a reserve gas price of twice the gas price the relay reports at that moment (`eth_gasPrice`). It then writes the address and ABI to `packages/nextjs/contracts/deployedContracts.ts`, and the app starts using that contract.
 
-Deployment takes about 1.66 million gas (measured on the Hardhat network). The prototype of this contract, which is smaller, cost 1.38 HBAR to deploy on testnet.
+Deploying this contract used 2,176,533 gas, 2.37 HBAR, on testnet on 2026-09-30. To show its source on Hashscan, verify it with Sourcify's v2 API: the request is in [packages/hardhat/README.md](packages/hardhat/README.md#verify-the-source) (`yarn hardhat:verify:testnet` calls the v1 API, which answered 404 when we tried it).
 
 `RecurringBuy` needs the Schedule Service, so there is nothing to deploy on a local chain. The contract's tests run against mocks: `yarn hardhat:test`.
 
