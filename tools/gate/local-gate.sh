@@ -212,15 +212,15 @@ if [[ $SCAFFOLD_OK -eq 1 ]]; then
 
   # ESLint runs with --max-warnings=0; forge fmt --check (foundry:lint) has no warnings to count.
   lint_seconds=0; lint_failed=""
-  for script in next:lint "$FW:lint"; do
+  for script in next:lint "$FW:lint" saucerswap:lint; do
     if [[ "$script" == foundry:lint ]]; then pm_run lint-foundry "$script" || lint_failed="$lint_failed $script"
     else pm_run "lint-${script%%:*}" "$script" ${RUN_SEP[@]+"${RUN_SEP[@]}"} --max-warnings=0 || lint_failed="$lint_failed $script"; fi
     lint_seconds=$((lint_seconds + STEP_SECONDS))
   done
   pm_run check-types next:check-types || lint_failed="$lint_failed next:check-types"
   lint_seconds=$((lint_seconds + STEP_SECONDS))
-  if [[ -z "$lint_failed" ]]; then record G4 "lint (next:lint, $FW:lint) + next:check-types" PASS "$lint_seconds"
-  else record G4 "lint (next:lint, $FW:lint) + next:check-types" FAIL "$lint_seconds" "failed:$lint_failed"; fi
+  if [[ -z "$lint_failed" ]]; then record G4 "lint (next:lint, $FW:lint, saucerswap:lint) + next:check-types" PASS "$lint_seconds"
+  else record G4 "lint (next:lint, $FW:lint, saucerswap:lint) + next:check-types" FAIL "$lint_seconds" "failed:$lint_failed"; fi
 
   build_seconds=0; build_failed=""
   for script in "$FW:compile" next:build; do
@@ -232,12 +232,12 @@ if [[ $SCAFFOLD_OK -eq 1 ]]; then
 
   # After the compile: next:test compares the app's ABI with the compiled contract.
   test_seconds=0; test_failed=""
-  for script in "$FW:test" next:test; do
+  for script in "$FW:test" next:test saucerswap:test; do
     pm_run "test-${script%%:*}" "$script" || test_failed="$test_failed $script"
     test_seconds=$((test_seconds + STEP_SECONDS))
   done
-  if [[ -z "$test_failed" ]]; then record G4 "test ($FW:test + next:test)" PASS "$test_seconds"
-  else record G4 "test ($FW:test + next:test)" FAIL "$test_seconds" "failed:$test_failed"; fi
+  if [[ -z "$test_failed" ]]; then record G4 "test ($FW:test + next:test + saucerswap:test)" PASS "$test_seconds"
+  else record G4 "test ($FW:test + next:test + saucerswap:test)" FAIL "$test_seconds" "failed:$test_failed"; fi
 
   # ---- G5: boot without .env and probe core routes --------------------------------------------------
   started=$SECONDS
