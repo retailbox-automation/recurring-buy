@@ -19,3 +19,9 @@ test("hederaIdToLongZeroAddress rejects a malformed id", () => {
   assert.throws(() => hederaIdToLongZeroAddress("0.0"), /not a Hedera id/);
   assert.throws(() => hederaIdToLongZeroAddress("not-an-id"), /not a Hedera id/);
 });
+
+test("hederaIdToLongZeroAddress rejects a shard or realm other than 0", () => {
+  assert.throws(() => hederaIdToLongZeroAddress("1.2.5"), /0\.0\.N/);
+  assert.throws(() => hederaIdToLongZeroAddress("0.1.5"), /0\.0\.N/);
+  assert.throws(() => hederaIdToLongZeroAddress("1.0.5"), /0\.0\.N/);
+});

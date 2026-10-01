@@ -51,11 +51,13 @@ export const ENDPOINTS: Record<Network, NetworkEndpoints> = {
   },
 };
 
-/** The EVM address of a Hedera id "0.0.N" (account, contract or HTS token) that has no EVM alias: N as 20 bytes. */
+/**
+ * The EVM address of a Hedera id "0.0.N" (account, contract or HTS token) that has no EVM alias: N as 20 bytes. A
+ * long-zero address also carries the shard and the realm, so an id outside shard 0 and realm 0 is refused rather than
+ * read as 0.0.N.
+ */
 export function hederaIdToLongZeroAddress(hederaId: string): Address {
-  const parts = hederaId.split(".");
-  if (parts.length !== 3 || parts.some(part => part === "" || !/^\d+$/.test(part))) {
-    throw new Error(`not a Hedera id (expected "0.0.N"): ${hederaId}`);
-  }
-  return `0x${BigInt(parts[2]).toString(16).padStart(40, "0")}` as Address;
+  const match = /^0\.0\.(\d+)$/.exec(hederaId);
+  if (!match) throw new Error(`not a Hedera id of the form "0.0.N": ${hederaId}`);
+  return `0x${BigInt(match[1]).toString(16).padStart(40, "0")}` as Address;
 }
