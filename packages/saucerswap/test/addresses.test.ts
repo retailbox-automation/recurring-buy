@@ -25,3 +25,8 @@ test("hederaIdToLongZeroAddress rejects a shard or realm other than 0", () => {
   assert.throws(() => hederaIdToLongZeroAddress("0.1.5"), /0\.0\.N/);
   assert.throws(() => hederaIdToLongZeroAddress("1.0.5"), /0\.0\.N/);
 });
+
+test("hederaIdToLongZeroAddress takes an entity number of up to 8 bytes, the address's own field for it", () => {
+  assert.equal(hederaIdToLongZeroAddress("0.0.18446744073709551615"), "0x000000000000000000000000ffffffffffffffff");
+  assert.throws(() => hederaIdToLongZeroAddress("0.0.18446744073709551616"), /8 bytes/);
+});

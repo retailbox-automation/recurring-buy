@@ -63,10 +63,16 @@ type Form = {
   floorPercent: string;
 };
 
-/** "0.0.N" or an EVM address as an EVM address; null when it is neither. */
+/** "0.0.N" or an EVM address as an EVM address; null when it is neither, or when N is too large for an address. */
 function toTokenAddress(input: string): Address | null {
   const value = input.trim();
-  if (/^0\.0\.\d+$/.test(value)) return hederaIdToLongZeroAddress(value);
+  if (/^0\.0\.\d+$/.test(value)) {
+    try {
+      return hederaIdToLongZeroAddress(value);
+    } catch {
+      return null;
+    }
+  }
   return isAddress(value) ? getAddress(value) : null;
 }
 
