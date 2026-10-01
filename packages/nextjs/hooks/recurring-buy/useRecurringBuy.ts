@@ -9,6 +9,7 @@ import {
   quoteExactInput,
 } from "@sh/saucerswap";
 import { useQueries, useQuery } from "@tanstack/react-query";
+import type { Address } from "viem";
 import * as chains from "viem/chains";
 import { usePublicClient } from "wagmi";
 import { useTargetNetwork } from "~~/hooks/scaffold-hbar";
@@ -136,7 +137,7 @@ export function usePlan(network: RecurringBuyNetwork, planId: bigint | undefined
 }
 
 /** Every plan `owner` made on the network's RecurringBuy, newest first. */
-export function useOwnerPlans(network: RecurringBuyNetwork, owner: string | undefined) {
+export function useOwnerPlans(network: RecurringBuyNetwork, owner: Address | undefined) {
   const { mirror, contract, chainId } = network;
   return useQuery({
     queryKey: ["recurring-buy", "owner-plans", chainId, contract, owner],

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { PlanDetails } from "./PlanDetails";
 import { ExternalLink, Panel, formatHbar, formatPeriod, formatToken } from "./common";
 import { associateCalldata, buildWrapHbar, hederaIdToLongZeroAddress, minOut, tinybarToWeibar } from "@sh/saucerswap";
-import { erc20Abi, formatUnits, getAddress, isAddress, parseEventLogs, parseUnits } from "viem";
+import { type Address, erc20Abi, formatUnits, getAddress, isAddress, parseEventLogs, parseUnits } from "viem";
 import {
   useAccount,
   usePublicClient,
@@ -64,7 +64,7 @@ type Form = {
 };
 
 /** "0.0.N" or an EVM address as an EVM address; null when it is neither. */
-function toTokenAddress(input: string): string | null {
+function toTokenAddress(input: string): Address | null {
   const value = input.trim();
   if (/^0\.0\.\d+$/.test(value)) return hederaIdToLongZeroAddress(value);
   return isAddress(value) ? getAddress(value) : null;
@@ -300,7 +300,7 @@ const PlanBuilder = ({ network, contract }: { network: RecurringBuyNetwork; cont
     }
   };
 
-  const associate = (step: "associate-out" | "associate-in", token: string) =>
+  const associate = (step: "associate-out" | "associate-in", token: Address) =>
     run(
       step,
       async () => {
