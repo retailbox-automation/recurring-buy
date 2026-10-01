@@ -71,7 +71,7 @@ On `/plans/new` you fill in the pair, the amount per buy, the period, the number
 | 4 | Approve the contract for the plan's total on the token you spend | 727,032 gas, 0.79 HBAR |
 | 5 | Start the plan and pay its gas deposit | 1,637,955 gas, 1.79 HBAR; 1,476,561 gas more for the first plan on a spend token |
 
-After that nobody signs anything. A tick costs about 1.75 HBAR in gas whatever the size of the buy, paid from the plan's gas deposit. The app reserves 4.332 HBAR per tick up front, and what the ticks do not use comes back to you. Reservations, settlement and gas prices in detail: [docs/costs.md](docs/costs.md).
+After that nobody signs anything. A tick costs about 1.75 HBAR in gas whatever the size of the buy (at 2026-09-30's gas price; `/plans/new` shows today's), paid from the plan's gas deposit. The app reserves 4.332 HBAR per tick up front, and what the ticks do not use comes back to you. Reservations, settlement and gas prices in detail: [docs/costs.md](docs/costs.md).
 
 ## Stop a plan
 

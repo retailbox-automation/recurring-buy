@@ -12,7 +12,7 @@ The extra gas of the first plan on a contract for a given spend token pays for t
 
 ## Which gas price
 
-`/plans/new` prices every transaction and tick at the gas price the network bills, which the mirror node publishes at `/api/v1/network/fees`: 109 tinybar per gas on testnet on 2026-09-30, for both `ContractCall` (a scheduled tick) and `EthereumTransaction` (what a wallet sends). The relay's `eth_gasPrice`, which the app sends as the maximum fee, is that price plus the relay operator's margin: hashio reported 114 on the same day (C4). The app also sets each gas limit to the transaction's `eth_estimateGas` plus 20%. So a wallet shows a maximum fee of the gas limit at the relay's price, while the network charges the gas used at its own (E1, G1).
+`/plans/new` prices every transaction and tick at the gas price the network bills, which the mirror node publishes at `/api/v1/network/fees`: 109 tinybar per gas on testnet on 2026-09-30, for both `ContractCall` (a scheduled tick) and `EthereumTransaction` (what a wallet sends). Hedera prices gas in US cents and converts at the current exchange rate, so the price in tinybar falls as HBAR's price rises: it was 87 on 2026-10-01 (C5), and every HBAR figure on this page scales with it. The relay's `eth_gasPrice`, which the app sends as the maximum fee, is that price plus the relay operator's margin: hashio reported 114 on the same day (C4). The app also sets each gas limit to the transaction's `eth_estimateGas` plus 20%. So a wallet shows a maximum fee of the gas limit at the relay's price, while the network charges the gas used at its own (E1, G1).
 
 ## The gas deposit
 
