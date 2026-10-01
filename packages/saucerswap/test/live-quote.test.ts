@@ -25,5 +25,8 @@ test(
     assert.ok(quote.amountOut > 0n, `expected a positive quote, got ${quote.amountOut}`);
     assert.ok(quote.quoterGasEstimate > 0n, `expected a positive gas estimate, got ${quote.quoterGasEstimate}`);
     assert.ok(minOut(quote.amountOut, 100) < quote.amountOut);
+
+    // 2^127 tinybar is far more WHBAR than the pool holds: the quoter runs out of liquidity on the way.
+    await assert.rejects(quoteExactInput(client, TESTNET_ADDRESSES.quoter, path, 2n ** 127n), /liquidity/);
   },
 );

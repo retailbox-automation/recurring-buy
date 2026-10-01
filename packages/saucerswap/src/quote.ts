@@ -12,7 +12,20 @@ export type SwapQuote = {
   quoterGasEstimate: bigint;
 };
 
-/** What a swap would give, from the quoter through `eth_call`. Rejects when the path has no pool or no liquidity. */
+/**
+ * The price limits QuoterV2 swaps toward when given none: TickMath's MIN_SQRT_RATIO + 1 when a pool's first token goes
+ * in, MAX_SQRT_RATIO - 1 when its second does. SaucerSwap V2 keeps Uniswap V3's TickMath.
+ */
+const SQRT_PRICE_LIMITS: readonly bigint[] = [
+  4_295_128_740n,
+  1_461_446_703_485_210_103_287_273_052_203_988_822_378_723_970_341n,
+];
+
+/**
+ * What a swap of `amountIn` would give, from the quoter through `eth_call`. Rejects when the path has no pool, and
+ * when a pool runs out of liquidity before it has taken all of `amountIn`: QuoterV2 then quotes only the part it could
+ * swap and leaves the pool's price at the limit. An amount a pool can take only at a steep price is quoted as it is.
+ */
 export async function quoteExactInput(
   client: Pick<PublicClient, "call">,
   quoter: Address,
@@ -25,11 +38,14 @@ export async function quoteExactInput(
     data: encodeFunctionData({ abi: quoterAbi, functionName: "quoteExactInput", args: [path, amountIn] }),
   });
   if (!data) throw new Error("quoteExactInput: the quoter returned no data");
-  const [amountOut, , , quoterGasEstimate] = decodeFunctionResult({
+  const [amountOut, sqrtPriceX96AfterList, , quoterGasEstimate] = decodeFunctionResult({
     abi: quoterAbi,
     functionName: "quoteExactInput",
     data,
   });
+  if (sqrtPriceX96AfterList.some(price => SQRT_PRICE_LIMITS.includes(price))) {
+    throw new Error(`quoteExactInput: the pool ran out of liquidity before taking all of amountIn (${amountIn})`);
+  }
   return { amountOut, quoterGasEstimate };
 }
 

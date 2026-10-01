@@ -24,6 +24,15 @@ test("quoteExactInput reads amountOut and gasEstimate from their own places in t
   assert.deepEqual(quote, { amountOut: 46_336_444n, quoterGasEstimate: 92_234n });
 });
 
+test("quoteExactInput rejects a quote for more than the pool can take", async () => {
+  // A pool that runs out of liquidity stops the swap at QuoterV2's price limit: TickMath's MIN_SQRT_RATIO + 1 when the
+  // pool's first token goes in, MAX_SQRT_RATIO - 1 when its second does. The quote then covers only part of amountIn.
+  for (const priceAtLimit of [4_295_128_740n, 1_461_446_703_485_210_103_287_273_052_203_988_822_378_723_970_341n]) {
+    const client = quoterAnswering([46_336_444n, [priceAtLimit], [1], 92_234n]);
+    await assert.rejects(quoteExactInput(client, TESTNET_ADDRESSES.quoter, PATH, 100_000_000n), /liquidity/);
+  }
+});
+
 test("minOut takes slippageBps off the quote with integer math", () => {
   assert.equal(minOut(100_000_000n, 100), 99_000_000n); // 1% slippage
   assert.equal(minOut(46_336_444n, 100), 45_873_079n); // the floor of testnet swap S2
