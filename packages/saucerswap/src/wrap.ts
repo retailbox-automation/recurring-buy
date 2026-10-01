@@ -1,7 +1,7 @@
 import { type Address, type Hex, encodeFunctionData, parseAbi } from "viem";
 
 import type { SaucerSwapAddresses } from "./addresses.js";
-import { tinybarToWeibar } from "./swap.js";
+import { tinybarToWeibar } from "./units.js";
 
 /**
  * SaucerSwap's WhbarHelper: `deposit()` gives the sender as much WHBAR as the HBAR sent with it. SaucerSwap's docs ask

@@ -6,7 +6,7 @@ export type Network = "testnet" | "mainnet";
 export type SaucerSwapAddresses = {
   /** WHBAR, HBAR as an HTS token: the first hop of any path that starts from HBAR. */
   whbar: Address;
-  /** SaucerSwapV2SwapRouter: `exactInput`, `multicall`, `refundETH`. */
+  /** SaucerSwapV2SwapRouter: `RecurringBuy` swaps through its `exactInput`. The deploy scripts repeat this address. */
   router: Address;
   /** SaucerSwapV2QuoterV2: `quoteExactInput`, read through `eth_call`. */
   quoter: Address;

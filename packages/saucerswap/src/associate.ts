@@ -1,11 +1,7 @@
 import { type Hex, encodeFunctionData, parseAbi } from "viem";
 
-/** HIP-719 functions that every HTS token answers at its own address, for `msg.sender`. */
-export const hip719Abi = parseAbi([
-  "function associate() returns (int64)",
-  "function dissociate() returns (int64)",
-  "function isAssociated() view returns (bool)",
-]);
+/** HIP-719 `associate()`, which every HTS token answers at its own address, for `msg.sender`. */
+export const hip719Abi = parseAbi(["function associate() returns (int64)"]);
 
 /**
  * Calldata for HIP-719 `associate()`: send it to the token's address from the account to associate. It used 726,488

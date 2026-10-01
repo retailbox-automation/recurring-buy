@@ -37,7 +37,7 @@ Added:
 - `.github/workflows/gate.yml` (the same gate in CI).
 - `.gitleaks.toml` (gitleaks defaults, minus Yarn's vendored release and plugins).
 - `.harness/` (Hedera Harness v3 recipe and validators).
-- `packages/saucerswap/` (`@sh/saucerswap`): a SaucerSwap V2 client with no React in it: addresses, quotes, swap paths and calldata, HTS association, wrapping HBAR into WHBAR, a gas limit for swaps. The app uses it for the quote, the price floor, the associations and the wrap.
+- `packages/saucerswap/` (`@sh/saucerswap`): the SaucerSwap V2 code the app uses, with no React in it: addresses, the quote and the price floor, HTS association, wrapping HBAR into WHBAR.
 - `packages/hardhat/contracts/RecurringBuy.sol`, the interfaces and mocks next to it, `test/RecurringBuy.test.ts` and `deploy/00_deploy_recurring_buy.ts`.
 - `packages/foundry/`: the Foundry variant. `contracts/` is a copy of `packages/hardhat/contracts`; `test/RecurringBuy.t.sol`, `script/DeployRecurringBuy.s.sol` and `scripts-js/generateTsAbis.mjs` are new. The package's layout follows the starter's Foundry package (`buidler-labs/scaffold-hbar`, `templates/blank-template`), which was not part of our Hardhat scaffold. `lib/` holds git submodules, not copies: forge-std (MIT or Apache-2.0) and OpenZeppelin Contracts (MIT), at the tags in `foundry.lock`.
 - `packages/nextjs`: routes `/plans/new` and `/plans`, `components/recurring-buy/`, `hooks/recurring-buy/` and `utils/recurring-buy/` with its tests and mirror node fixtures.
