@@ -1,34 +1,52 @@
 "use client";
 
+import { CumulativeChart } from "./CumulativeChart";
+import { FlowDiagram } from "./FlowDiagram";
+import { ForDevelopers } from "./ForDevelopers";
 import { OUTCOME_BADGE, StatusBadge } from "./PlanDetails";
-import { ExternalLink, Panel, formatAmount, formatHbar, formatPeriod } from "./common";
+import { ExternalLink, Linked, Panel, formatAmount, formatClock, formatDay, formatHbar, formatPeriod } from "./common";
 import { formatUnits } from "viem";
-import { ArrowTopRightOnSquareIcon } from "@heroicons/react/24/outline";
+import { CheckCircleIcon } from "@heroicons/react/24/solid";
 import { referencePlan, useContractId, useReferencePlan, useTickCharges } from "~~/hooks/recurring-buy/useRecurringBuy";
 import { boughtTotals } from "~~/utils/recurring-buy/chart";
-import type { TickRow } from "~~/utils/recurring-buy/plan";
+import { tickTime } from "~~/utils/recurring-buy/plan";
 
 const title = "Live reference plan";
 
-const day = (seconds: number) =>
-  new Date(seconds * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-const clock = (seconds: number) =>
-  new Date(seconds * 1000).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-
-/** When the tick ran, or else when it is due; unix seconds. */
-const tickTime = ({ outcome, due }: TickRow) =>
-  "timestamp" in outcome && outcome.timestamp ? Number(outcome.timestamp.split(".")[0]) : due;
-
-const Linked = ({ href, children }: { href: string; children: React.ReactNode }) => (
-  <ExternalLink href={href}>
-    {children}
-    <ArrowTopRightOnSquareIcon className="inline size-3.5 ml-0.5 -mt-0.5" aria-hidden />
-  </ExternalLink>
-);
+/** The home page's live part: the flow, the reference plan's buys, its chart and the create command. */
+export const ReferenceOverview = () => {
+  const reference = useReferencePlan();
+  const { network, plan, tokens } = reference;
+  return (
+    <>
+      <section className="flex flex-col gap-3">
+        <FlowDiagram plan={plan} tokens={tokens} network={network} />
+        <p className="m-0 text-sm text-base-content/60 text-center">
+          <b>Next tick:</b> as its last step the tick schedules the next one, paid from the plan&apos;s gas deposit.
+          Steps 2 to 4 repeat once per period until the plan has run all its ticks, its owner stops it, or the allowance
+          or the gas deposit runs out. A tick whose swap would buy below the floor is skipped, and the next one is still
+          scheduled.
+        </p>
+        <p className="m-0 flex items-center justify-center gap-3 rounded-2xl border border-primary/20 bg-primary/10 px-4 py-3 text-primary">
+          <CheckCircleIcon className="size-6 shrink-0" aria-hidden />
+          <span>
+            Every tick is executed by the network and paid by the contract. <b>Nobody presses a button.</b>
+          </span>
+        </p>
+      </section>
+      <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-[minmax(0,1.85fr)_minmax(0,1fr)_minmax(0,0.9fr)] gap-4 items-start">
+        <div className="md:col-span-2 2xl:col-span-1">
+          <ReferenceCard {...reference} />
+        </div>
+        <CumulativeChart plan={plan} token={tokens.out} />
+        <ForDevelopers />
+      </div>
+    </>
+  );
+};
 
 /** The plan from scaffold.config.ts `referencePlan`, read from the mirror node: needs no wallet and no env. */
-export const ReferencePlan = () => {
-  const { network, query, plan, tokens } = useReferencePlan();
+const ReferenceCard = ({ network, query, plan, tokens }: ReturnType<typeof useReferencePlan>) => {
   const { in: tokenIn, out: tokenOut } = tokens;
   const { data: contractId } = useContractId(network);
   const ran = (plan?.ticks ?? []).flatMap(row =>
@@ -89,7 +107,7 @@ export const ReferencePlan = () => {
   const average = Number(formatUnits(received, tokenOut.decimals)) / Number(formatUnits(spent, tokenIn.decimals));
   const gas = ran.every(at => charges[at] !== undefined) ? ran.reduce((sum, at) => sum + charges[at], 0n) : null;
   const times = plan.ticks.flatMap(row => tickTime(row) ?? []);
-  const oneDay = new Set(times.map(day)).size === 1;
+  const oneDay = new Set(times.map(formatDay)).size === 1;
 
   return (
     <Panel
@@ -141,9 +159,9 @@ export const ReferencePlan = () => {
           <thead>
             <tr className="bg-base-200">
               <th>#</th>
-              <th>Time{oneDay && times.length > 0 && ` (${day(times[0])})`}</th>
+              <th>Time{oneDay && times.length > 0 && ` (${formatDay(times[0])})`}</th>
               <th className="hidden sm:table-cell">Swap</th>
-              <th className="text-right">{tokenOut.symbol} received</th>
+              <th className="text-right">Received</th>
               <th className="text-right">Gas (HBAR)</th>
               <th>Links</th>
             </tr>
@@ -156,7 +174,9 @@ export const ReferencePlan = () => {
               return (
                 <tr key={row.tick} data-testid="tick-row" className="tabular-nums whitespace-nowrap">
                   <td>{row.tick}</td>
-                  <td>{time === null ? "—" : oneDay ? clock(time) : `${day(time)}, ${clock(time)}`}</td>
+                  <td>
+                    {time === null ? "—" : oneDay ? formatClock(time) : `${formatDay(time)}, ${formatClock(time)}`}
+                  </td>
                   <td className="hidden sm:table-cell">
                     {row.outcome.kind === "bought" ? (
                       `${amountIn(row.outcome.amountIn)} → ${tokenOut.symbol}`

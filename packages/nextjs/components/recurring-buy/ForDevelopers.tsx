@@ -13,7 +13,7 @@ export const ForDevelopers = () => {
   return (
     <Panel title="For developers">
       <p className="m-0 -mt-3 text-sm text-base-content/60">Get started with the scaffold in one command.</p>
-      <div className="mt-4 rounded-xl bg-hedera-charcoal text-white p-4 dark:border dark:border-base-content/10">
+      <div className="mt-4 rounded-xl bg-hedera-charcoal text-white p-3 sm:p-4 2xl:p-3 dark:border dark:border-base-content/10">
         <div className="flex items-center justify-between mb-3">
           <span className="flex gap-1.5" aria-hidden>
             <span className="size-2.5 rounded-full bg-error" />

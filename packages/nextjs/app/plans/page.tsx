@@ -7,7 +7,7 @@ export const metadata = getMetadata({
 });
 
 const MyPlansPage = () => (
-  <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 py-10">
+  <div className="w-full max-w-[1680px] mx-auto px-4 sm:px-6 xl:px-10 py-6">
     <MyPlans />
   </div>
 );

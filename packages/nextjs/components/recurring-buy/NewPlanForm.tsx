@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import Link from "next/link";
 import { PlanDetails } from "./PlanDetails";
 import { ExternalLink, Panel, formatHbar, formatPeriod, formatToken } from "./common";
@@ -15,7 +15,15 @@ import {
   useWriteContract,
 } from "wagmi";
 import {
+  ArrowDownIcon,
+  ArrowRightIcon,
+  CheckIcon,
+  InformationCircleIcon,
+  LockClosedIcon,
+} from "@heroicons/react/24/outline";
+import {
   type RecurringBuyNetwork,
+  type TokenInfo,
   defaultRoute,
   useGasPrice,
   useHederaFees,
@@ -99,12 +107,51 @@ function initialForm(chainId: number): Form {
   };
 }
 
-const Field = ({ label, hint, children }: { label: string; hint?: React.ReactNode; children: React.ReactNode }) => (
-  <fieldset className="fieldset p-0">
-    <legend className="fieldset-legend">{label}</legend>
+const Field = ({
+  label,
+  hint,
+  className = "",
+  children,
+}: {
+  label: string;
+  hint?: React.ReactNode;
+  className?: string;
+  children: React.ReactNode;
+}) => (
+  <fieldset className={`fieldset p-0 ${className}`}>
+    <legend className="fieldset-legend text-sm">{label}</legend>
     {children}
     {hint && <p className="label m-0 whitespace-normal">{hint}</p>}
   </fieldset>
+);
+
+/** A token field: its symbol and decimals once the mirror node knows it, over the id or address typed in. */
+const TokenField = ({
+  label,
+  value,
+  onChange,
+  info,
+}: {
+  label: string;
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  info: TokenInfo | null | undefined;
+}) => (
+  <Field label={label} className="sm:col-span-3">
+    <label className="input w-full h-auto py-2 flex-col items-start gap-0 rounded-xl">
+      <span className="font-bold leading-tight">{info?.symbol ?? "HTS token id or address"}</span>
+      <span className="flex w-full items-center gap-1 text-xs text-base-content/60">
+        <input
+          className="grow min-w-0"
+          aria-label={`${label} token`}
+          value={value}
+          onChange={onChange}
+          spellCheck={false}
+        />
+        {info && <span className="shrink-0">· {info.decimals} decimals</span>}
+      </span>
+    </label>
+  </Field>
 );
 
 type StepState = "done" | "todo" | "blocked";
@@ -113,25 +160,51 @@ const Step = ({
   n,
   title,
   state,
+  current,
   children,
 }: {
   n: number;
   title: string;
   state: StepState;
+  /** The first step still to do. */
+  current: boolean;
   children: React.ReactNode;
 }) => (
-  <li className="flex gap-3">
-    <span
-      className={`w-7 h-7 shrink-0 rounded-full flex items-center justify-center text-sm font-semibold ${
-        state === "done" ? "bg-success text-success-content" : "bg-base-200 text-base-content/70"
-      }`}
-    >
-      {state === "done" ? "✓" : n}
-    </span>
-    <div className="flex flex-col gap-2 min-w-0 grow">
-      <span className={`font-semibold ${state === "blocked" ? "text-base-content/50" : ""}`}>{title}</span>
-      {children}
+  <li
+    className={`flex-1 min-w-0 rounded-2xl border p-4 flex flex-col gap-2 ${
+      current
+        ? "border-primary bg-primary/5 ring-1 ring-primary/30"
+        : state === "done"
+          ? "border-success/40 bg-success/5"
+          : "border-base-300 bg-base-100"
+    }`}
+  >
+    <div className="flex items-center gap-3">
+      <span
+        className={`size-8 shrink-0 rounded-full grid place-items-center text-sm font-bold ${
+          state === "done"
+            ? "bg-success text-success-content"
+            : current
+              ? "bg-primary text-primary-content"
+              : "bg-base-200 text-base-content/70"
+        }`}
+      >
+        {state === "done" ? <CheckIcon className="size-4" aria-hidden /> : n}
+      </span>
+      <span className={`font-semibold ${current ? "text-primary" : state === "blocked" ? "text-base-content/60" : ""}`}>
+        {title}
+      </span>
+      {current && <span className="badge badge-sm badge-primary badge-soft ml-auto shrink-0">Current step</span>}
+      {state === "blocked" && <LockClosedIcon className="size-4 ml-auto shrink-0 text-base-content/40" aria-hidden />}
     </div>
+    {children}
+  </li>
+);
+
+const StepArrow = () => (
+  <li aria-hidden className="self-center text-primary/70 px-2 py-1">
+    <ArrowDownIcon className="size-5 lg:hidden" />
+    <ArrowRightIcon className="size-6 hidden lg:block" />
   </li>
 );
 
@@ -397,149 +470,328 @@ const PlanBuilder = ({ network, contract }: { network: RecurringBuyNetwork; cont
   };
   const gasTotal = steps.reduce((sum, step) => sum + step.gas, 0n);
 
-  return (
-    <div className="flex flex-col gap-6">
-      <Panel title="1. Describe the plan">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2">
-          <Field
-            label="Spend"
-            hint={inInfo ? `${inInfo.symbol}, ${inInfo.decimals} decimals` : "HTS token id or address"}
-          >
-            <input className="input w-full" value={form.tokenIn} onChange={set("tokenIn")} spellCheck={false} />
-          </Field>
-          <Field
-            label="Buy"
-            hint={outInfo ? `${outInfo.symbol}, ${outInfo.decimals} decimals` : "HTS token id or address"}
-          >
-            <input className="input w-full" value={form.tokenOut} onChange={set("tokenOut")} spellCheck={false} />
-          </Field>
-          <Field label={`Amount per buy (${inSymbol})`}>
-            <input className="input w-full" inputMode="decimal" value={form.amount} onChange={set("amount")} />
-          </Field>
-          <Field label="SaucerSwap V2 pool fee">
-            <select className="select w-full" value={form.fee} onChange={set("fee")}>
-              <option value="500">0.05%</option>
-              <option value="1500">0.15%</option>
-              <option value="3000">0.3%</option>
-              <option value="10000">1%</option>
-            </select>
-          </Field>
-          <Field label="Every">
-            <div className="flex gap-2">
-              <input className="input w-24" inputMode="numeric" value={form.every} onChange={set("every")} />
-              <select className="select grow" value={form.unit} onChange={set("unit")}>
-                {Object.keys(PERIOD_UNITS).map(unit => (
-                  <option key={unit} value={unit}>
-                    {unit}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </Field>
-          <Field label="Number of buys">
-            <input className="input w-full" inputMode="numeric" value={form.ticks} onChange={set("ticks")} />
-          </Field>
-          <Field
-            label="Price floor, % below today's quote"
-            hint="A tick that would get less is skipped: nothing is taken, and the next tick is still scheduled."
-          >
-            <input
-              className="input w-full"
-              inputMode="decimal"
-              value={form.floorPercent}
-              onChange={set("floorPercent")}
-            />
-          </Field>
-        </div>
-      </Panel>
+  const receiveState: StepState = outAssociated ? "done" : "todo";
+  const wrapState: StepState = shortfall === 0n ? "done" : "todo";
+  const allowState: StepState = allowanceDone ? "done" : ready && (inAssociated || !showWrap) ? "todo" : "blocked";
+  const startState: StepState = ready && allowanceDone && outAssociated ? "todo" : "blocked";
+  const signSteps = [
+    { key: "receive", state: receiveState },
+    ...(showWrap ? [{ key: "wrap", state: wrapState }] : []),
+    { key: "allow", state: allowState },
+    { key: "start", state: startState },
+  ];
+  const current = signSteps.find(step => step.state === "todo")?.key;
+  const stepProps = (key: string) => {
+    const index = signSteps.findIndex(step => step.key === key);
+    return { n: index + 1, state: signSteps[index].state, current: current === key };
+  };
 
-      <Panel title="2. Check what you sign">
-        {problems.length > 0 ? (
-          <ul className="m-0 pl-5 list-disc text-warning-content bg-warning/20 rounded-xl py-3 pr-3 text-sm">
-            {problems.map(problem => (
-              <li key={problem}>{problem}</li>
-            ))}
-          </ul>
-        ) : (
-          <div className="flex flex-col gap-4 text-sm">
-            <p className="m-0 text-base">
-              Buy {outSymbol} with {formatToken(amountPerTick, tokenIn!, inInfo)} {formatPeriod(period)},{" "}
-              {ticks.toString()} {ticks === 1n ? "time" : "times"}.
-            </p>
-            <dl className="grid grid-cols-1 sm:grid-cols-[auto_1fr] gap-x-6 sm:gap-y-2 m-0 [&>dd]:mb-2 sm:[&>dd]:mb-0">
-              <dt className="text-base-content/60">Quote now</dt>
-              <dd className="m-0">
-                {quote.data ? formatToken(quote.data.amountOut, tokenOut!, outInfo) : "…"} per buy (SaucerSwap QuoterV2)
-              </dd>
-              <dt className="text-base-content/60">Price floor</dt>
-              <dd className="m-0">
-                {minAmountOut > 0n ? `at least ${formatToken(minAmountOut, tokenOut!, outInfo)} per buy` : "…"}
-              </dd>
-              <dt className="text-base-content/60">Allowance</dt>
-              <dd className="m-0">
-                up to {formatToken(total, tokenIn!, inInfo)} in total, taken one buy at a time. Revoke any time by
-                approving 0.
-              </dd>
-              <dt className="text-base-content/60">Transactions</dt>
-              <dd className="m-0">
-                <ol className="m-0 pl-5 list-decimal flex flex-col gap-1" data-testid="transactions">
-                  {steps.map(step => (
-                    <li key={step.kind}>
-                      {stepLabel(step)}: {step.gas.toLocaleString()} gas
-                      {gasPrice && <>, about {formatHbar(step.gas * gasPrice.ethereumTransaction)}</>}
-                      {step.ifNeeded && <span className="text-base-content/60"> (skipped if already done)</span>}
+  const receiveStep = (
+    <Step title={`Receive ${outSymbol}`} {...stepProps("receive")}>
+      {outAssociated ? (
+        <p className="m-0 text-sm text-base-content/70">Your account is associated with {outSymbol}.</p>
+      ) : (
+        <>
+          <button
+            className="btn btn-sm btn-primary w-full"
+            disabled={busy !== null || !tokenOut}
+            onClick={() => associate("associate-out", tokenOut!)}
+          >
+            {busy === "associate-out" ? "Associating…" : `Associate ${outSymbol}`}
+          </button>
+          <p className="m-0 text-xs text-base-content/70">
+            An HTS token needs an association before you can receive it (HIP-719). Do it here even if your account
+            associates tokens automatically: a tick has no gas to spare for that.
+          </p>
+        </>
+      )}
+    </Step>
+  );
+
+  const wrapStep = showWrap && (
+    <Step title={`Get ${inSymbol}`} {...stepProps("wrap")}>
+      <p className="m-0 text-sm text-base-content/70" data-testid="wrap-balance">
+        A plan spends {inSymbol}, HBAR wrapped one to one. You hold {formatToken(inBalance ?? 0n, tokenIn!, inInfo)}
+        {shortfall === 0n
+          ? ", enough for this plan."
+          : `; ${othersNeed > 0n ? "this plan and your other running plans on it need" : "this plan needs"} ${formatToken(neededAllowance, tokenIn!, inInfo)}.`}
+      </p>
+      {shortfall > 0n && (
+        <>
+          {!inAssociated && (
+            <>
+              <button
+                className="btn btn-sm btn-primary w-full"
+                disabled={busy !== null}
+                onClick={() => associate("associate-in", tokenIn!)}
+              >
+                {busy === "associate-in" ? "Associating…" : `Associate ${inSymbol}`}
+              </button>
+              <p className="m-0 text-xs text-base-content/70">First, so your account can hold it.</p>
+            </>
+          )}
+          <label className="input input-sm w-full">
+            <input
+              inputMode="decimal"
+              aria-label="HBAR to wrap"
+              value={wrapInput ?? formatUnits(shortfall, HBAR_DECIMALS)}
+              onChange={e => setWrapInput(e.target.value)}
+            />
+            <span className="text-base-content/60">HBAR</span>
+          </label>
+          <button
+            className="btn btn-sm btn-primary w-full"
+            disabled={busy !== null || !inAssociated || wrapAmount <= 0n}
+            onClick={wrap}
+          >
+            {busy === "wrap" ? "Wrapping…" : `Wrap ${formatUnits(wrapAmount, HBAR_DECIMALS)} HBAR → ${inSymbol}`}
+          </button>
+          <p className="m-0 text-xs text-base-content/60">
+            Through SaucerSwap&apos;s WhbarHelper contract. You hold{" "}
+            {account.data ? formatHbar(account.data.balanceTinybar) : "…"}.
+          </p>
+        </>
+      )}
+    </Step>
+  );
+
+  const allowStep = (
+    <Step title={`Allow the contract to take ${inSymbol}`} {...stepProps("allow")}>
+      <p className="m-0 text-sm text-base-content/70">
+        Current allowance: {allowance !== undefined ? formatToken(allowance, tokenIn!, inInfo) : "…"}
+        {othersNeed > 0n &&
+          `, of which your other running plans on ${inSymbol} can still take ${formatToken(othersNeed, tokenIn!, inInfo)}`}
+        .{unboundedShare && ` A running plan without an end also draws on it: stop it or raise this allowance.`}
+        {ownerPlans.data?.truncated &&
+          " Only your newest plans were read: an older running plan on this token would also draw on it."}
+      </p>
+      {!sharingKnown && (
+        <p className="m-0 text-sm text-warning">
+          {ownerPlans.isError
+            ? "Could not read your other plans, which share this allowance. Reload to try again."
+            : "Reading your other plans, which share this allowance…"}
+        </p>
+      )}
+      {!allowanceDone && !inAssociated && !showWrap && tokenIn && (
+        <>
+          <button
+            className="btn btn-sm btn-primary w-full"
+            disabled={busy !== null}
+            onClick={() => associate("associate-in", tokenIn)}
+          >
+            {busy === "associate-in" ? "Associating…" : `Associate ${inSymbol}`}
+          </button>
+          <p className="m-0 text-xs text-base-content/70">
+            First, so your account can hold {inSymbol} and approve the contract on it.
+          </p>
+        </>
+      )}
+      {!allowanceDone && (
+        <button
+          className="btn btn-sm btn-primary w-full"
+          disabled={busy !== null || !ready || !sharingKnown || !inAssociated}
+          onClick={approve}
+        >
+          {busy === "approve" ? "Approving…" : `Approve ${ready ? formatToken(neededAllowance, tokenIn!, inInfo) : ""}`}
+        </button>
+      )}
+      <p className="m-0 text-xs text-base-content/60">
+        The contract can take up to this much, one buy at a time. Revoke any time by approving 0.
+      </p>
+    </Step>
+  );
+
+  const startStep = (
+    <Step title="Start plan" {...stepProps("start")}>
+      <p className="m-0 text-sm text-base-content/70">Pay the gas deposit to start the plan.</p>
+      {inBalance !== undefined && !coversOneBuy && (
+        <p className="m-0 text-sm text-warning">
+          You hold {formatToken(inBalance, tokenIn!, inInfo)}, less than one buy: the first tick would stop the plan.
+        </p>
+      )}
+      {account.data && deposit !== undefined && account.data.balanceTinybar < deposit && (
+        <p className="m-0 text-sm text-warning">
+          You hold {formatHbar(account.data.balanceTinybar)}, less than the gas deposit.
+        </p>
+      )}
+      <button
+        className="btn btn-primary btn-sm w-full"
+        disabled={busy !== null || !ready || !allowanceDone || !outAssociated || !coversOneBuy}
+        onClick={start}
+      >
+        {busy === "start"
+          ? "Starting…"
+          : `Start plan${deposit !== undefined ? ` · deposit ${formatHbar(deposit)}` : ""}`}
+      </button>
+      <p className="m-0 text-xs text-base-content/60">Hedera Schedule Service will run your buys automatically.</p>
+    </Step>
+  );
+
+  return (
+    <div className="flex flex-col gap-5">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-5 items-start">
+        <Panel title="1. Describe the plan">
+          <div className="grid grid-cols-1 sm:grid-cols-6 gap-x-4 gap-y-3">
+            <TokenField label="Spend" value={form.tokenIn} onChange={set("tokenIn")} info={inInfo} />
+            <TokenField label="Buy" value={form.tokenOut} onChange={set("tokenOut")} info={outInfo} />
+            <Field label="Amount per buy" className="sm:col-span-2">
+              <label className="input w-full">
+                <input inputMode="decimal" value={form.amount} onChange={set("amount")} />
+                <span className="text-base-content/60">{inSymbol}</span>
+              </label>
+            </Field>
+            <Field label="SaucerSwap V2 pool fee" className="sm:col-span-2">
+              <select className="select w-full" value={form.fee} onChange={set("fee")}>
+                <option value="500">0.05%</option>
+                <option value="1500">0.15%</option>
+                <option value="3000">0.3%</option>
+                <option value="10000">1%</option>
+              </select>
+            </Field>
+            <Field label="Every" className="sm:col-span-2">
+              <div className="flex gap-2">
+                <input className="input w-20" inputMode="numeric" value={form.every} onChange={set("every")} />
+                <select className="select grow" value={form.unit} onChange={set("unit")}>
+                  {Object.keys(PERIOD_UNITS).map(unit => (
+                    <option key={unit} value={unit}>
+                      {unit}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </Field>
+            <Field label="Number of buys" className="sm:col-span-2">
+              <input className="input w-full" inputMode="numeric" value={form.ticks} onChange={set("ticks")} />
+            </Field>
+            <Field
+              label="Price floor, % below today's quote"
+              hint="A tick that would get less is skipped: nothing is taken, and the next tick is still scheduled."
+              className="sm:col-span-4"
+            >
+              <label className="input w-full">
+                <input inputMode="decimal" value={form.floorPercent} onChange={set("floorPercent")} />
+                <span className="text-base-content/60">%</span>
+              </label>
+            </Field>
+          </div>
+        </Panel>
+
+        <Panel title="2. Check what you sign">
+          {problems.length > 0 ? (
+            <ul className="m-0 pl-5 list-disc text-warning-content bg-warning/20 rounded-xl py-3 pr-3 text-sm">
+              {problems.map(problem => (
+                <li key={problem}>{problem}</li>
+              ))}
+            </ul>
+          ) : (
+            <div className="flex flex-col gap-4 text-sm">
+              <div className="rounded-xl bg-primary/5 border border-primary/10 p-4 flex flex-col gap-3">
+                <p className="m-0 text-base font-bold">
+                  Buy {outSymbol} with {formatToken(amountPerTick, tokenIn!, inInfo)} {formatPeriod(period)},{" "}
+                  {ticks.toString()} {ticks === 1n ? "time" : "times"}.
+                </p>
+                <dl className="grid grid-cols-1 sm:grid-cols-3 gap-3 m-0">
+                  <div>
+                    <dt className="text-base-content/60">Quote now</dt>
+                    <dd className="m-0">
+                      <b>{quote.data ? formatToken(quote.data.amountOut, tokenOut!, outInfo) : "…"}</b> per buy
+                      (SaucerSwap QuoterV2)
+                    </dd>
+                  </div>
+                  <div className="sm:border-l sm:border-base-300 sm:pl-3">
+                    <dt className="text-base-content/60">Price floor</dt>
+                    <dd className="m-0">
+                      {minAmountOut > 0n ? (
+                        <>
+                          at least <b>{formatToken(minAmountOut, tokenOut!, outInfo)}</b> per buy
+                        </>
+                      ) : (
+                        "…"
+                      )}
+                    </dd>
+                  </div>
+                  <div className="sm:border-l sm:border-base-300 sm:pl-3">
+                    <dt className="text-base-content/60">Allowance</dt>
+                    <dd className="m-0">
+                      up to <b>{formatToken(total, tokenIn!, inInfo)}</b> in total, taken one buy at a time. Revoke any
+                      time by approving 0.
+                    </dd>
+                  </div>
+                </dl>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <h3 className="m-0 text-sm font-semibold">Transactions to sign ({steps.length})</h3>
+                <ol className="m-0 p-0 list-none flex flex-col" data-testid="transactions">
+                  {steps.map((step, i) => (
+                    <li
+                      key={step.kind}
+                      className="grid grid-cols-[1.5rem_minmax(0,1fr)_auto] sm:grid-cols-[1.5rem_minmax(0,1fr)_auto_7rem] gap-x-3 py-1.5 border-b border-base-200"
+                    >
+                      <span className="text-base-content/60">{i + 1}.</span>
+                      <span>
+                        {stepLabel(step)}
+                        {step.ifNeeded && <span className="text-base-content/60"> (skipped if already done)</span>}
+                      </span>
+                      <span className="text-right tabular-nums whitespace-nowrap">{step.gas.toLocaleString()} gas</span>
+                      {gasPrice && (
+                        <span className="hidden sm:block text-right tabular-nums whitespace-nowrap">
+                          ≈ {formatHbar(step.gas * gasPrice.ethereumTransaction)}
+                        </span>
+                      )}
                     </li>
                   ))}
                 </ol>
-                <p className="m-0 mt-1 text-xs text-base-content/60">
-                  {gasPrice ? `About ${formatHbar(gasTotal * gasPrice.ethereumTransaction)} of gas in all` : "Gas"},
-                  from what each transaction used on testnet
-                  {gasPrice && `, at the network's price now of ${gasPrice.ethereumTransaction} tinybar per gas`}. Your
-                  wallet shows a higher maximum fee: each gas limit is the estimate plus 20%, at the relay&apos;s price,
-                  which includes its margin. The network bills the gas used.
+                {gasPrice && (
+                  <p className="m-0 rounded-lg bg-primary/5 px-3 py-2">
+                    About <b>{formatHbar(gasTotal * gasPrice.ethereumTransaction)}</b> of gas in all.
+                  </p>
+                )}
+                <p className="m-0 text-xs text-base-content/60">
+                  Gas as each transaction used on testnet
+                  {gasPrice && `, at the network's ${gasPrice.ethereumTransaction} tinybar per gas now`}. Your wallet
+                  shows a higher maximum fee (the estimate plus 20%, at the relay&apos;s price); the network bills the
+                  gas used.
                 </p>
                 {!gasPrice && gasPriceFailed && (
-                  <p className="m-0 mt-1 text-xs text-warning">
+                  <p className="m-0 text-xs text-warning">
                     Gas price unavailable: the mirror node&apos;s /network/fees did not answer, so the transactions and
                     the tick are shown in gas only.
                   </p>
                 )}
-              </dd>
-              <dt className="text-base-content/60">Gas per tick</dt>
-              <dd className="m-0">
-                {reservePerTick !== undefined ? (
-                  <>
-                    <b>{formatHbar(reservePerTick)}</b> reserved from the deposit ({tickGasLimit.toLocaleString()} gas ×{" "}
-                    {reserveGasPrice?.toString()} tinybar, the contract&apos;s reserve price).
-                    {gasPrice && (
-                      <>
-                        {" "}
-                        A tick costs about {formatHbar(tickCost(gasPrice))} at today&apos;s gas price. The contract
-                        charges the plan what the tick used and puts the rest of the reservation back into the deposit.
-                      </>
-                    )}
-                  </>
-                ) : (
-                  "…"
-                )}
-              </dd>
-              <dt className="text-base-content/60">Gas deposit</dt>
-              <dd className="m-0">
-                {deposit !== undefined ? (
-                  <>
-                    <b>{formatHbar(deposit)}</b>, one reservation for each of the {ticks.toString()} ticks, paid with
-                    the start transaction. What the ticks do not use stays in the deposit: withdraw it when the plan
-                    ends, or stop early and get it back with the pending tick&apos;s reservation, if Hedera deletes that
-                    schedule.
-                  </>
-                ) : (
-                  "…"
-                )}
-              </dd>
-            </dl>
-          </div>
-        )}
-      </Panel>
+              </div>
+
+              <dl className="grid grid-cols-1 sm:grid-cols-[auto_1fr] gap-x-6 sm:gap-y-2 m-0 [&>dd]:mb-2 sm:[&>dd]:mb-0">
+                <dt className="font-semibold">Gas per tick</dt>
+                <dd className="m-0 text-base-content/80">
+                  {reservePerTick !== undefined ? (
+                    <>
+                      <b>{formatHbar(reservePerTick)}</b> reserved from the deposit ({tickGasLimit.toLocaleString()} gas
+                      × {reserveGasPrice?.toString()} tinybar, the contract&apos;s reserve price)
+                      {gasPrice && <>; a tick costs about {formatHbar(tickCost(gasPrice))} at today&apos;s gas price</>}
+                      . The plan is charged what the tick used, and the rest goes back into the deposit.
+                    </>
+                  ) : (
+                    "…"
+                  )}
+                </dd>
+                <dt className="font-semibold">Gas deposit</dt>
+                <dd className="m-0 text-base-content/80">
+                  {deposit !== undefined ? (
+                    <>
+                      <b>{formatHbar(deposit)}</b>, one reservation for each of the {ticks.toString()} ticks, paid with
+                      the start transaction. What the ticks do not use is yours to withdraw when the plan ends; stop
+                      early and the pending tick&apos;s reservation comes back too, if Hedera deletes that schedule.
+                    </>
+                  ) : (
+                    "…"
+                  )}
+                </dd>
+              </dl>
+            </div>
+          )}
+        </Panel>
+      </div>
 
       <Panel title="3. Sign">
         {!address ? (
@@ -565,149 +817,18 @@ const PlanBuilder = ({ network, contract }: { network: RecurringBuyNetwork; cont
             <p className="m-0 text-base-content/60">Reading your account from the mirror node…</p>
           )
         ) : (
-          <ol className="flex flex-col gap-5 m-0 p-0 list-none">
-            <Step n={1} title={`Receive ${outSymbol}`} state={outAssociated ? "done" : "todo"}>
-              {outAssociated ? (
-                <p className="m-0 text-sm text-base-content/70">Your account is associated with {outSymbol}.</p>
-              ) : (
-                <div className="flex flex-wrap items-center gap-3">
-                  <button
-                    className="btn btn-sm btn-primary"
-                    disabled={busy !== null || !tokenOut}
-                    onClick={() => associate("associate-out", tokenOut!)}
-                  >
-                    {busy === "associate-out" ? "Associating…" : `Associate ${outSymbol}`}
-                  </button>
-                  <span className="text-sm text-base-content/70">
-                    An HTS token needs an association before you can receive it (HIP-719). Do it here even if your
-                    account associates tokens automatically: a tick has no gas to spare for that.
-                  </span>
-                </div>
-              )}
-            </Step>
-            {showWrap && (
-              <Step n={2} title={`Get ${inSymbol}`} state={shortfall === 0n ? "done" : "todo"}>
-                <p className="m-0 text-sm text-base-content/70" data-testid="wrap-balance">
-                  A plan spends {inSymbol}, HBAR wrapped one to one. You hold{" "}
-                  {formatToken(inBalance ?? 0n, tokenIn!, inInfo)}
-                  {shortfall === 0n
-                    ? ", enough for this plan."
-                    : `; ${othersNeed > 0n ? "this plan and your other running plans on it need" : "this plan needs"} ${formatToken(neededAllowance, tokenIn!, inInfo)}.`}
-                </p>
-                {shortfall > 0n && (
-                  <>
-                    {!inAssociated && (
-                      <div className="flex flex-wrap items-center gap-3">
-                        <button
-                          className="btn btn-sm btn-primary"
-                          disabled={busy !== null}
-                          onClick={() => associate("associate-in", tokenIn!)}
-                        >
-                          {busy === "associate-in" ? "Associating…" : `Associate ${inSymbol}`}
-                        </button>
-                        <span className="text-sm text-base-content/70">First, so your account can hold it.</span>
-                      </div>
-                    )}
-                    <div className="flex flex-wrap items-center gap-3">
-                      <label className="input input-sm w-48">
-                        <input
-                          inputMode="decimal"
-                          aria-label="HBAR to wrap"
-                          value={wrapInput ?? formatUnits(shortfall, HBAR_DECIMALS)}
-                          onChange={e => setWrapInput(e.target.value)}
-                        />
-                        <span className="text-base-content/60">HBAR</span>
-                      </label>
-                      <button
-                        className="btn btn-sm btn-primary"
-                        disabled={busy !== null || !inAssociated || wrapAmount <= 0n}
-                        onClick={wrap}
-                      >
-                        {busy === "wrap"
-                          ? "Wrapping…"
-                          : `Wrap ${formatUnits(wrapAmount, HBAR_DECIMALS)} HBAR → ${inSymbol}`}
-                      </button>
-                    </div>
-                    <p className="m-0 text-xs text-base-content/60">
-                      Through SaucerSwap&apos;s WhbarHelper contract. You hold{" "}
-                      {account.data ? formatHbar(account.data.balanceTinybar) : "…"}.
-                    </p>
-                  </>
-                )}
-              </Step>
-            )}
-            <Step
-              n={showWrap ? 3 : 2}
-              title={`Allow the contract to take ${inSymbol}`}
-              state={allowanceDone ? "done" : ready && (inAssociated || !showWrap) ? "todo" : "blocked"}
-            >
-              <p className="m-0 text-sm text-base-content/70">
-                Current allowance: {allowance !== undefined ? formatToken(allowance, tokenIn!, inInfo) : "…"}
-                {othersNeed > 0n &&
-                  `, of which your other running plans on ${inSymbol} can still take ${formatToken(othersNeed, tokenIn!, inInfo)}`}
-                .{unboundedShare && ` A running plan without an end also draws on it: stop it or raise this allowance.`}
-                {ownerPlans.data?.truncated &&
-                  " Only your newest plans were read: an older running plan on this token would also draw on it."}
-              </p>
-              {!sharingKnown && (
-                <p className="m-0 text-sm text-warning">
-                  {ownerPlans.isError
-                    ? "Could not read your other plans, which share this allowance. Reload to try again."
-                    : "Reading your other plans, which share this allowance…"}
-                </p>
-              )}
-              {!allowanceDone && !inAssociated && !showWrap && tokenIn && (
-                <div className="flex flex-wrap items-center gap-3">
-                  <button
-                    className="btn btn-sm btn-primary"
-                    disabled={busy !== null}
-                    onClick={() => associate("associate-in", tokenIn)}
-                  >
-                    {busy === "associate-in" ? "Associating…" : `Associate ${inSymbol}`}
-                  </button>
-                  <span className="text-sm text-base-content/70">
-                    First, so your account can hold {inSymbol} and approve the contract on it.
-                  </span>
-                </div>
-              )}
-              {!allowanceDone && (
-                <button
-                  className="btn btn-sm btn-primary self-start"
-                  disabled={busy !== null || !ready || !sharingKnown || !inAssociated}
-                  onClick={approve}
-                >
-                  {busy === "approve"
-                    ? "Approving…"
-                    : `Approve ${ready ? formatToken(neededAllowance, tokenIn!, inInfo) : ""}`}
-                </button>
-              )}
-            </Step>
-            <Step
-              n={showWrap ? 4 : 3}
-              title="Start the plan"
-              state={ready && allowanceDone && outAssociated ? "todo" : "blocked"}
-            >
-              {inBalance !== undefined && !coversOneBuy && (
-                <p className="m-0 text-sm text-warning">
-                  You hold {formatToken(inBalance, tokenIn!, inInfo)}, less than one buy: the first tick would stop the
-                  plan.
-                </p>
-              )}
-              {account.data && deposit !== undefined && account.data.balanceTinybar < deposit && (
-                <p className="m-0 text-sm text-warning">
-                  You hold {formatHbar(account.data.balanceTinybar)}, less than the gas deposit.
-                </p>
-              )}
-              <button
-                className="btn btn-primary self-start"
-                disabled={busy !== null || !ready || !allowanceDone || !outAssociated || !coversOneBuy}
-                onClick={start}
-              >
-                {busy === "start"
-                  ? "Starting…"
-                  : `Start plan${deposit !== undefined ? ` · deposit ${formatHbar(deposit)}` : ""}`}
-              </button>
-              <p className="m-0 text-xs text-base-content/60">
+          <div className="flex flex-col gap-4">
+            <ol className="m-0 p-0 list-none flex flex-col lg:flex-row items-stretch">
+              {[receiveStep, wrapStep, allowStep, startStep].filter(Boolean).map((step, i) => (
+                <Fragment key={i}>
+                  {i > 0 && <StepArrow />}
+                  {step}
+                </Fragment>
+              ))}
+            </ol>
+            <p className="m-0 flex items-start gap-2 rounded-xl bg-primary/10 text-primary px-4 py-2.5 text-sm">
+              <InformationCircleIcon className="size-5 shrink-0" aria-hidden />
+              <span>
                 The wallet only confirms that the plan was created. Whether each tick bought is known from its
                 schedule&apos;s execution on the mirror node, which the next screen follows.
                 {explorer && (
@@ -720,9 +841,9 @@ const PlanBuilder = ({ network, contract }: { network: RecurringBuyNetwork; cont
                     .
                   </>
                 )}
-              </p>
-            </Step>
-          </ol>
+              </span>
+            </p>
+          </div>
         )}
       </Panel>
       {!showWrap && inBalance !== undefined && inBalance < total && coversOneBuy && (

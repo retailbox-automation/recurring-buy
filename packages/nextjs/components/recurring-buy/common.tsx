@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { formatUnits } from "viem";
+import { ArrowTopRightOnSquareIcon } from "@heroicons/react/24/outline";
 import type { TokenInfo } from "~~/hooks/recurring-buy/useRecurringBuy";
 import { hederaIdOf } from "~~/utils/recurring-buy/mirror";
 
@@ -9,6 +10,14 @@ export const ExternalLink = ({ href, children }: { href: string; children: React
   <a href={href} target="_blank" rel="noreferrer" className="link link-hover">
     {children}
   </a>
+);
+
+/** An external link with the "opens elsewhere" mark, for tables of transactions. */
+export const Linked = ({ href, children }: { href: string; children: React.ReactNode }) => (
+  <ExternalLink href={href}>
+    {children}
+    <ArrowTopRightOnSquareIcon className="inline size-3.5 ml-0.5 -mt-0.5" aria-hidden />
+  </ExternalLink>
 );
 
 export const Panel = ({
@@ -22,7 +31,7 @@ export const Panel = ({
 }) => (
   <section className="bg-base-100 rounded-2xl border border-base-300 p-5 sm:p-6">
     <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-      <h2 className="font-bold text-lg m-0">{title}</h2>
+      <h2 className="font-bold text-xl m-0">{title}</h2>
       {action}
     </div>
     {children}
@@ -76,6 +85,14 @@ export function formatTime(timestamp: string | number): string {
     second: "2-digit",
   });
 }
+
+/** Unix seconds as "Oct 1, 2026". */
+export const formatDay = (seconds: number) =>
+  new Date(seconds * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+
+/** Unix seconds as "11:34 AM". */
+export const formatClock = (seconds: number) =>
+  new Date(seconds * 1000).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 
 /** "2.046098 SAUCE"; while the token is unknown, the raw amount and its id. */
 export function formatToken(amount: bigint, token: string, info: TokenInfo | null | undefined): string {

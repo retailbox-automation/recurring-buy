@@ -234,6 +234,10 @@ export function chainStatus(events: PlanEvent[], ticks: TickRow[]): ChainStatus 
 export const ticksRun = (ticks: TickRow[]) =>
   ticks.filter(row => ["bought", "skipped", "pull-failed"].includes(row.outcome.kind)).length;
 
+/** When the tick ran, or else when it is due, in unix seconds; null for a tick known only from an outcome event. */
+export const tickTime = ({ outcome, due }: TickRow): number | null =>
+  "timestamp" in outcome && outcome.timestamp ? Number(outcome.timestamp.split(".")[0]) : due;
+
 export type PlanView = {
   planId: bigint;
   owner: Address;

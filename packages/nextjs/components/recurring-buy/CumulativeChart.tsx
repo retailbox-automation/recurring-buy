@@ -2,8 +2,9 @@
 
 import { Panel, formatAmount } from "./common";
 import { formatUnits } from "viem";
-import { useReferencePlan } from "~~/hooks/recurring-buy/useRecurringBuy";
+import type { TokenInfo } from "~~/hooks/recurring-buy/useRecurringBuy";
 import { axisTicks, cumulativeBought } from "~~/utils/recurring-buy/chart";
+import type { PlanView } from "~~/utils/recurring-buy/plan";
 
 const W = 340;
 const H = 240;
@@ -21,10 +22,8 @@ const clock = (timestamp: string) =>
 const day = (timestamp: string) =>
   new Date(seconds(timestamp) * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 
-/** The reference plan's running total of the bought token, one point per tick that ran. */
-export const CumulativeChart = () => {
-  const { plan, tokens } = useReferencePlan();
-  const token = tokens.out;
+/** A plan's running total of the bought token, one point per tick that ran; `token` is the token it buys. */
+export const CumulativeChart = ({ plan, token }: { plan: PlanView | null; token: TokenInfo | null | undefined }) => {
   const symbol = token?.symbol ?? "token";
 
   if (!plan || !token) {
@@ -71,7 +70,12 @@ export const CumulativeChart = () => {
 
   return (
     <Panel title={<span className="text-sm">Cumulative {symbol} received</span>} action={totalBox}>
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto text-[12px]" role="img" aria-label={`${symbol} received`}>
+      <svg
+        viewBox={`0 0 ${W} ${H}`}
+        className="w-full h-auto max-h-72 text-[12px]"
+        role="img"
+        aria-label={`${symbol} received`}
+      >
         <defs>
           <linearGradient id="cumulative-fill" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="var(--color-primary)" stopOpacity="0.25" />
