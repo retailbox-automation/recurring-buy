@@ -3,6 +3,7 @@
 import { Fragment } from "react";
 import { ExternalLink, formatAmount, formatPeriod } from "./common";
 import {
+  ArrowDownIcon,
   ArrowsRightLeftIcon,
   ChevronRightIcon,
   ClockIcon,
@@ -23,7 +24,9 @@ const Bubble = ({ icon: Icon }: { icon: typeof ClockIcon }) => (
 );
 
 const Chip = ({ children }: { children: React.ReactNode }) => (
-  <span className="rounded-lg bg-primary/10 text-primary text-sm px-3 py-1">{children}</span>
+  <span className="whitespace-nowrap rounded-lg bg-primary/10 text-primary text-xs 2xl:text-sm px-2.5 2xl:px-3 py-1">
+    {children}
+  </span>
 );
 
 const Placeholder = () => <div className="self-stretch h-24 rounded-xl bg-base-200 animate-pulse" />;
@@ -49,9 +52,8 @@ const Allowance = ({ plan, token }: { plan: PlanView | null; token: TokenInfo | 
       {cap > 0n && (
         <>
           <progress className="progress progress-primary h-2" value={Number(spent)} max={Number(cap)} />
-          <div className="flex flex-wrap justify-between gap-x-2 text-xs text-base-content/60">
-            <span>{amount(spent)} spent</span>
-            <span>capped</span>
+          <div className="text-xs text-base-content/60">
+            {formatAmount(spent, token.decimals)} of {amount(cap)} spent
           </div>
         </>
       )}
@@ -68,30 +70,34 @@ const Delivered = ({ plan, token }: { plan: PlanView | null; token: TokenInfo | 
       <div className="text-base 2xl:text-lg font-bold tabular-nums">
         <span className="whitespace-nowrap">+ {formatAmount(received, token.decimals)}</span> {token.symbol}
       </div>
-      <div className="text-sm text-base-content/70">delivered to your wallet</div>
+      <div className="text-sm text-base-content/70 text-balance">delivered to your wallet</div>
     </div>
   );
 };
 
-/** An arrow between two steps; a dot runs along it for every tick the plan has run. */
+/**
+ * An arrow between two steps. In a row a dot runs along it for every tick the plan has run; in a column it is a plain
+ * arrow down.
+ */
 const Connector = ({ pulses, offset, compact }: { pulses: number; offset: number; compact: boolean }) => (
   <li
     aria-hidden
-    className={`relative shrink-0 self-center h-10 w-4 lg:h-4 lg:w-12 overflow-hidden text-primary/60 ${
-      compact ? "" : "lg:self-end lg:mb-[5.25rem]"
-    }`}
+    className={`shrink-0 self-center text-primary/60 ${compact ? "" : "lg:self-end lg:mb-20 2xl:mb-[5.25rem]"}`}
   >
-    <span className="absolute left-1/2 top-0 h-full w-px lg:left-0 lg:top-1/2 lg:h-px lg:w-full bg-primary/30" />
-    {Array.from({ length: pulses }, (_, i) => (
-      <span
-        key={i}
-        className="absolute inset-0 animate-flow-y lg:animate-flow-x motion-reduce:hidden"
-        style={{ animationDelay: `${offset + (i * PULSE_SECONDS) / pulses}s` }}
-      >
-        <span className="absolute left-1/2 top-0 -translate-x-1/2 lg:left-0 lg:top-1/2 lg:translate-x-0 lg:-translate-y-1/2 size-1.5 rounded-full bg-primary" />
-      </span>
-    ))}
-    <ChevronRightIcon className="absolute size-4 bottom-0 left-0 rotate-90 lg:rotate-0 lg:bottom-auto lg:left-auto lg:right-0 lg:top-0" />
+    <ArrowDownIcon className="size-5 my-2 lg:hidden" />
+    <span className="relative hidden lg:block h-4 w-8 2xl:w-12 overflow-hidden">
+      <span className="absolute left-0 top-1/2 h-px w-full bg-primary/30" />
+      {Array.from({ length: pulses }, (_, i) => (
+        <span
+          key={i}
+          className="absolute inset-0 animate-flow-x motion-reduce:hidden"
+          style={{ animationDelay: `${offset + (i * PULSE_SECONDS) / pulses}s` }}
+        >
+          <span className="absolute left-0 top-1/2 -translate-y-1/2 size-1.5 rounded-full bg-primary" />
+        </span>
+      ))}
+      <ChevronRightIcon className="absolute size-4 right-0 top-0" />
+    </span>
   </li>
 );
 
@@ -127,7 +133,7 @@ export const FlowDiagram = ({
     {
       icon: ClockIcon,
       title: "Hedera Schedule Service",
-      body: "Calls the contract at the scheduled second (HIP-1215). No keeper bot.",
+      body: "Calls the contract at the scheduled second (HIP\u20111215). No keeper bot.",
       brief: plan ? `Wakes the contract ${formatPeriod(plan.params.period)}.` : "Wakes the contract.",
       visual: (
         <>
@@ -171,26 +177,33 @@ export const FlowDiagram = ({
         <Fragment key={i}>
           {i > 0 && <Connector pulses={pulses} offset={(i - 1) * 0.6} compact={compact} />}
           <li
-            className={`flex-1 min-w-0 bg-base-100 border border-base-300 rounded-2xl flex flex-col gap-3 ${compact ? "p-3" : "p-4"}`}
+            className={`flex-1 min-w-0 bg-base-100 border border-base-300 rounded-2xl flex flex-col gap-3 ${
+              compact ? "p-3" : "p-4 lg:p-3 2xl:p-4"
+            }`}
           >
-            <div className="flex gap-2.5">
+            {/* Below 2xl the text runs under the number at the card's full width; from 2xl it sits beside it. */}
+            <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-2.5 gap-y-1.5">
               <span
-                className={`rounded-full bg-primary/10 text-primary font-bold grid place-items-center shrink-0 ${
-                  compact ? "size-11" : "size-8"
+                className={`rounded-full bg-primary/10 text-primary font-bold grid place-items-center 2xl:row-span-2 2xl:self-start ${
+                  compact ? "size-9 2xl:size-11" : "size-8"
                 }`}
               >
                 {compact ? (
-                  <Icon className="size-6" aria-hidden />
+                  <Icon className="size-5 2xl:size-6" aria-hidden />
                 ) : i < 4 ? (
                   i + 1
                 ) : (
                   <Icon className="size-5" aria-hidden />
                 )}
               </span>
-              <div className="min-w-0">
-                <h3 className="font-bold text-base m-0 leading-snug">{title}</h3>
-                {compact && i === 2 && contractLink && <div className="text-sm">{contractLink}</div>}
-                <p className="m-0 mt-1 text-[13px] leading-snug text-base-content/70">{compact ? brief : body}</p>
+              <h3
+                className={`m-0 font-bold 2xl:text-base leading-snug text-balance ${compact ? "text-sm" : "text-[15px]"}`}
+              >
+                {title}
+              </h3>
+              <div className="col-span-2 2xl:col-span-1 2xl:col-start-2 text-[13px] lg:text-xs 2xl:text-[13px] leading-snug text-pretty text-base-content/70">
+                {compact && i === 2 && contractLink && <div className="text-sm text-base-content">{contractLink}</div>}
+                <p className="m-0">{compact ? brief : body}</p>
               </div>
             </div>
             {!compact && <div className="mt-auto lg:min-h-[6.5rem] flex flex-col items-center gap-3">{visual}</div>}

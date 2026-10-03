@@ -3,7 +3,7 @@
 import { Fragment, useState } from "react";
 import Link from "next/link";
 import { PlanDetails } from "./PlanDetails";
-import { ExternalLink, Panel, formatHbar, formatPeriod, formatToken } from "./common";
+import { ExternalLink, Panel, Warning, formatHbar, formatPeriod, formatToken, shortAddress } from "./common";
 import { associateCalldata, buildWrapHbar, hederaIdToLongZeroAddress, minOut, tinybarToWeibar } from "@sh/saucerswap";
 import { type Address, erc20Abi, formatUnits, getAddress, isAddress, parseEventLogs, parseUnits } from "viem";
 import {
@@ -156,6 +156,10 @@ const TokenField = ({
 
 type StepState = "done" | "todo" | "blocked";
 
+/** A step's button; disabled it stays readable, in the theme's base colors. */
+const ACTION =
+  "btn btn-sm btn-primary w-full h-auto min-h-8 py-1.5 leading-tight disabled:bg-base-300 disabled:text-base-content/60";
+
 const Step = ({
   n,
   title,
@@ -171,7 +175,7 @@ const Step = ({
   children: React.ReactNode;
 }) => (
   <li
-    className={`flex-1 min-w-0 rounded-2xl border p-4 flex flex-col gap-2 ${
+    className={`relative flex-1 min-w-0 rounded-2xl border p-4 flex flex-col gap-2 ${
       current
         ? "border-primary bg-primary/5 ring-1 ring-primary/30"
         : state === "done"
@@ -194,9 +198,9 @@ const Step = ({
       <span className={`font-semibold ${current ? "text-primary" : state === "blocked" ? "text-base-content/60" : ""}`}>
         {title}
       </span>
-      {current && <span className="badge badge-sm badge-primary badge-soft ml-auto shrink-0">Current step</span>}
       {state === "blocked" && <LockClosedIcon className="size-4 ml-auto shrink-0 text-base-content/40" aria-hidden />}
     </div>
+    {current && <span className="absolute -top-2.5 right-4 badge badge-sm badge-primary">Current step</span>}
     {children}
   </li>
 );
@@ -493,7 +497,7 @@ const PlanBuilder = ({ network, contract }: { network: RecurringBuyNetwork; cont
       ) : (
         <>
           <button
-            className="btn btn-sm btn-primary w-full"
+            className={ACTION}
             disabled={busy !== null || !tokenOut}
             onClick={() => associate("associate-out", tokenOut!)}
           >
@@ -520,11 +524,7 @@ const PlanBuilder = ({ network, contract }: { network: RecurringBuyNetwork; cont
         <>
           {!inAssociated && (
             <>
-              <button
-                className="btn btn-sm btn-primary w-full"
-                disabled={busy !== null}
-                onClick={() => associate("associate-in", tokenIn!)}
-              >
+              <button className={ACTION} disabled={busy !== null} onClick={() => associate("associate-in", tokenIn!)}>
                 {busy === "associate-in" ? "Associating…" : `Associate ${inSymbol}`}
               </button>
               <p className="m-0 text-xs text-base-content/70">First, so your account can hold it.</p>
@@ -539,11 +539,7 @@ const PlanBuilder = ({ network, contract }: { network: RecurringBuyNetwork; cont
             />
             <span className="text-base-content/60">HBAR</span>
           </label>
-          <button
-            className="btn btn-sm btn-primary w-full"
-            disabled={busy !== null || !inAssociated || wrapAmount <= 0n}
-            onClick={wrap}
-          >
+          <button className={ACTION} disabled={busy !== null || !inAssociated || wrapAmount <= 0n} onClick={wrap}>
             {busy === "wrap" ? "Wrapping…" : `Wrap ${formatUnits(wrapAmount, HBAR_DECIMALS)} HBAR → ${inSymbol}`}
           </button>
           <p className="m-0 text-xs text-base-content/60">
@@ -566,19 +562,15 @@ const PlanBuilder = ({ network, contract }: { network: RecurringBuyNetwork; cont
           " Only your newest plans were read: an older running plan on this token would also draw on it."}
       </p>
       {!sharingKnown && (
-        <p className="m-0 text-sm text-warning">
+        <Warning>
           {ownerPlans.isError
             ? "Could not read your other plans, which share this allowance. Reload to try again."
             : "Reading your other plans, which share this allowance…"}
-        </p>
+        </Warning>
       )}
       {!allowanceDone && !inAssociated && !showWrap && tokenIn && (
         <>
-          <button
-            className="btn btn-sm btn-primary w-full"
-            disabled={busy !== null}
-            onClick={() => associate("associate-in", tokenIn)}
-          >
+          <button className={ACTION} disabled={busy !== null} onClick={() => associate("associate-in", tokenIn)}>
             {busy === "associate-in" ? "Associating…" : `Associate ${inSymbol}`}
           </button>
           <p className="m-0 text-xs text-base-content/70">
@@ -588,7 +580,7 @@ const PlanBuilder = ({ network, contract }: { network: RecurringBuyNetwork; cont
       )}
       {!allowanceDone && (
         <button
-          className="btn btn-sm btn-primary w-full"
+          className={ACTION}
           disabled={busy !== null || !ready || !sharingKnown || !inAssociated}
           onClick={approve}
         >
@@ -605,17 +597,15 @@ const PlanBuilder = ({ network, contract }: { network: RecurringBuyNetwork; cont
     <Step title="Start plan" {...stepProps("start")}>
       <p className="m-0 text-sm text-base-content/70">Pay the gas deposit to start the plan.</p>
       {inBalance !== undefined && !coversOneBuy && (
-        <p className="m-0 text-sm text-warning">
+        <Warning>
           You hold {formatToken(inBalance, tokenIn!, inInfo)}, less than one buy: the first tick would stop the plan.
-        </p>
+        </Warning>
       )}
       {account.data && deposit !== undefined && account.data.balanceTinybar < deposit && (
-        <p className="m-0 text-sm text-warning">
-          You hold {formatHbar(account.data.balanceTinybar)}, less than the gas deposit.
-        </p>
+        <Warning>You hold {formatHbar(account.data.balanceTinybar)}, less than the gas deposit.</Warning>
       )}
       <button
-        className="btn btn-primary btn-sm w-full"
+        className={ACTION}
         disabled={busy !== null || !ready || !allowanceDone || !outAssociated || !coversOneBuy}
         onClick={start}
       >
@@ -634,13 +624,13 @@ const PlanBuilder = ({ network, contract }: { network: RecurringBuyNetwork; cont
           <div className="grid grid-cols-1 sm:grid-cols-6 gap-x-4 gap-y-3">
             <TokenField label="Spend" value={form.tokenIn} onChange={set("tokenIn")} info={inInfo} />
             <TokenField label="Buy" value={form.tokenOut} onChange={set("tokenOut")} info={outInfo} />
-            <Field label="Amount per buy" className="sm:col-span-2">
+            <Field label="Amount per buy" className="sm:col-span-2 content-end">
               <label className="input w-full">
                 <input inputMode="decimal" value={form.amount} onChange={set("amount")} />
                 <span className="text-base-content/60">{inSymbol}</span>
               </label>
             </Field>
-            <Field label="SaucerSwap V2 pool fee" className="sm:col-span-2">
+            <Field label="SaucerSwap V2 pool fee" className="sm:col-span-2 content-end">
               <select className="select w-full" value={form.fee} onChange={set("fee")}>
                 <option value="500">0.05%</option>
                 <option value="1500">0.15%</option>
@@ -648,10 +638,10 @@ const PlanBuilder = ({ network, contract }: { network: RecurringBuyNetwork; cont
                 <option value="10000">1%</option>
               </select>
             </Field>
-            <Field label="Every" className="sm:col-span-2">
+            <Field label="Every" className="sm:col-span-2 content-end">
               <div className="flex gap-2">
-                <input className="input w-20" inputMode="numeric" value={form.every} onChange={set("every")} />
-                <select className="select grow" value={form.unit} onChange={set("unit")}>
+                <input className="input w-14 shrink-0" inputMode="numeric" value={form.every} onChange={set("every")} />
+                <select className="select min-w-0 grow" value={form.unit} onChange={set("unit")}>
                   {Object.keys(PERIOD_UNITS).map(unit => (
                     <option key={unit} value={unit}>
                       {unit}
@@ -678,7 +668,7 @@ const PlanBuilder = ({ network, contract }: { network: RecurringBuyNetwork; cont
 
         <Panel title="2. Check what you sign">
           {problems.length > 0 ? (
-            <ul className="m-0 pl-5 list-disc text-warning-content bg-warning/20 rounded-xl py-3 pr-3 text-sm">
+            <ul className="m-0 pl-8 list-disc bg-warning text-warning-content rounded-xl py-3 pr-4 text-sm">
               {problems.map(problem => (
                 <li key={problem}>{problem}</li>
               ))}
@@ -723,24 +713,28 @@ const PlanBuilder = ({ network, contract }: { network: RecurringBuyNetwork; cont
               <div className="flex flex-col gap-2">
                 <h3 className="m-0 text-sm font-semibold">Transactions to sign ({steps.length})</h3>
                 <ol className="m-0 p-0 list-none flex flex-col" data-testid="transactions">
-                  {steps.map((step, i) => (
-                    <li
-                      key={step.kind}
-                      className="grid grid-cols-[1.5rem_minmax(0,1fr)_auto] sm:grid-cols-[1.5rem_minmax(0,1fr)_auto_7rem] gap-x-3 py-1.5 border-b border-base-200"
-                    >
-                      <span className="text-base-content/60">{i + 1}.</span>
-                      <span>
-                        {stepLabel(step)}
-                        {step.ifNeeded && <span className="text-base-content/60"> (skipped if already done)</span>}
-                      </span>
-                      <span className="text-right tabular-nums whitespace-nowrap">{step.gas.toLocaleString()} gas</span>
-                      {gasPrice && (
-                        <span className="hidden sm:block text-right tabular-nums whitespace-nowrap">
-                          ≈ {formatHbar(step.gas * gasPrice.ethereumTransaction)}
+                  {steps.map((step, i) => {
+                    const cost = gasPrice && `≈ ${formatHbar(step.gas * gasPrice.ethereumTransaction)}`;
+                    return (
+                      <li
+                        key={step.kind}
+                        className="grid grid-cols-[1.5rem_minmax(0,1fr)_auto] sm:grid-cols-[1.5rem_minmax(0,1fr)_auto_7rem] gap-x-3 py-1.5 border-b border-base-200"
+                      >
+                        <span className="text-base-content/60">{i + 1}.</span>
+                        <span>
+                          {stepLabel(step)}
+                          {step.ifNeeded && <span className="text-base-content/60"> (skipped if already done)</span>}
                         </span>
-                      )}
-                    </li>
-                  ))}
+                        <span className="text-right tabular-nums whitespace-nowrap">
+                          {step.gas.toLocaleString()} gas
+                          {cost && <span className="block sm:hidden text-base-content/60">{cost}</span>}
+                        </span>
+                        {cost && (
+                          <span className="hidden sm:block text-right tabular-nums whitespace-nowrap">{cost}</span>
+                        )}
+                      </li>
+                    );
+                  })}
                 </ol>
                 {gasPrice && (
                   <p className="m-0 rounded-lg bg-primary/5 px-3 py-2">
@@ -754,10 +748,10 @@ const PlanBuilder = ({ network, contract }: { network: RecurringBuyNetwork; cont
                   gas used.
                 </p>
                 {!gasPrice && gasPriceFailed && (
-                  <p className="m-0 text-xs text-warning">
+                  <Warning>
                     Gas price unavailable: the mirror node&apos;s /network/fees did not answer, so the transactions and
                     the tick are shown in gas only.
-                  </p>
+                  </Warning>
                 )}
               </div>
 
@@ -826,19 +820,16 @@ const PlanBuilder = ({ network, contract }: { network: RecurringBuyNetwork; cont
                 </Fragment>
               ))}
             </ol>
-            <p className="m-0 flex items-start gap-2 rounded-xl bg-primary/10 text-primary px-4 py-2.5 text-sm">
-              <InformationCircleIcon className="size-5 shrink-0" aria-hidden />
+            <p className="m-0 flex items-start gap-2 rounded-xl bg-primary/10 text-primary dark:text-base-content px-4 py-2.5 text-sm">
+              <InformationCircleIcon className="size-5 shrink-0 text-primary" aria-hidden />
               <span>
                 The wallet only confirms that the plan was created. Whether each tick bought is known from its
                 schedule&apos;s execution on the mirror node, which the next screen follows.
                 {explorer && (
                   <>
                     {" "}
-                    Contract:{" "}
-                    <span className="break-all">
-                      <ExternalLink href={`${explorer}/contract/${contract}`}>{contract}</ExternalLink>
-                    </span>
-                    .
+                    Contract{" "}
+                    <ExternalLink href={`${explorer}/contract/${contract}`}>{shortAddress(contract)}</ExternalLink>.
                   </>
                 )}
               </span>

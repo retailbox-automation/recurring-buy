@@ -5,9 +5,9 @@ import { ReferenceOverview } from "~~/components/recurring-buy/ReferencePlan";
 const Home: NextPage = () => (
   <div className="w-full max-w-[1680px] mx-auto px-4 sm:px-6 xl:px-10 py-6 flex flex-col gap-5">
     <section className="flex flex-col items-center text-center gap-3">
-      <h1 className="m-0 text-4xl md:text-5xl font-bold tracking-tight leading-tight">
-        Recurring buys on SaucerSwap.{" "}
-        <span className="block sm:inline bg-linear-to-r from-accent to-primary bg-clip-text text-transparent">
+      <h1 className="m-0 text-4xl md:text-5xl font-bold tracking-tight leading-tight text-balance">
+        <span className="lg:whitespace-nowrap">Recurring buys on SaucerSwap.</span>{" "}
+        <span className="block sm:inline whitespace-nowrap bg-linear-to-r from-accent to-primary bg-clip-text text-transparent">
           No bot. No server.
         </span>
       </h1>

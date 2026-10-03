@@ -26,7 +26,6 @@
   --color-hedera-smoke: #9b9b9d;
 
   --animate-flow-x: flow-x 3.6s linear infinite;
-  --animate-flow-y: flow-y 3.6s linear infinite;
   --animate-draw: draw 1.4s ease-out;
 
   @keyframes flow-x {
@@ -40,20 +39,6 @@
     }
     to {
       transform: translateX(100%);
-      opacity: 0;
-    }
-  }
-  @keyframes flow-y {
-    from {
-      transform: translateY(0);
-      opacity: 0;
-    }
-    20%,
-    80% {
-      opacity: 1;
-    }
-    to {
-      transform: translateY(100%);
       opacity: 0;
     }
   }

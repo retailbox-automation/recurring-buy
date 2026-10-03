@@ -13,6 +13,7 @@ import {
   formatRemaining,
   formatTime,
   formatToken,
+  shortAddress,
   useNow,
 } from "./common";
 import { formatUnits } from "viem";
@@ -163,14 +164,17 @@ const TickTable = ({ plan, network, tokens }: { plan: PlanView; network: Recurri
 
   return (
     <div className="overflow-x-auto">
-      <table className="table table-sm">
+      <table className="table table-xs sm:table-sm">
         <thead>
           <tr className="bg-base-200">
             <th className="w-10">#</th>
-            <th className="hidden sm:table-cell">Time{oneDay && times.length > 0 && ` (${formatDay(times[0])})`}</th>
+            <th>
+              Time
+              {oneDay && times.length > 0 && <span className="hidden sm:inline"> ({formatDay(times[0])})</span>}
+            </th>
             <th>Status</th>
             <th className="hidden md:table-cell">Swap</th>
-            <th className="hidden md:table-cell text-right">Gas (HBAR)</th>
+            <th className="hidden lg:table-cell text-right">Gas (HBAR)</th>
             <th>Links</th>
           </tr>
         </thead>
@@ -179,17 +183,22 @@ const TickTable = ({ plan, network, tokens }: { plan: PlanView; network: Recurri
             const [style, label] = OUTCOME_BADGE[row.outcome.kind];
             const at = executedAt(row);
             const time = tickTime(row);
-            const bought = row.outcome.kind === "bought";
             return (
               <tr key={row.tick} data-testid="tick-row">
                 <td className="tabular-nums">{row.tick}</td>
-                <td className="hidden sm:table-cell whitespace-nowrap tabular-nums">
+                <td className="whitespace-nowrap tabular-nums">
                   {time === null ? "—" : oneDay ? formatClock(time) : `${formatDay(time)}, ${formatClock(time)}`}
                 </td>
                 <td>
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                     <span className={`badge badge-sm ${style}`}>{label}</span>
-                    {!bought && <span className="text-sm">{outcomeText(row, plan, tokens, now)}</span>}
+                    {row.outcome.kind === "bought" ? (
+                      <span className="md:hidden whitespace-nowrap tabular-nums">
+                        {amountOf(row.outcome.amountOut, plan.params.tokenOut, tokens.out)}
+                      </span>
+                    ) : (
+                      <span className="sm:text-sm">{outcomeText(row, plan, tokens, now)}</span>
+                    )}
                   </div>
                 </td>
                 <td className="hidden md:table-cell whitespace-nowrap tabular-nums">
@@ -197,14 +206,16 @@ const TickTable = ({ plan, network, tokens }: { plan: PlanView; network: Recurri
                     ? `${amountOf(row.outcome.amountIn, plan.params.tokenIn, tokens.in)} → ${amountOf(row.outcome.amountOut, plan.params.tokenOut, tokens.out)}`
                     : "—"}
                 </td>
-                <td className="hidden md:table-cell text-right tabular-nums whitespace-nowrap">
+                <td className="hidden lg:table-cell text-right tabular-nums whitespace-nowrap">
                   {at && charges[at] !== undefined ? formatAmount(charges[at], 8) : "—"}
                 </td>
-                <td className="whitespace-nowrap space-x-2">
-                  {explorer && at && <Linked href={`${explorer}/transaction/${at}`}>tx</Linked>}
-                  {explorer && row.scheduleId && (
-                    <Linked href={`${explorer}/schedule/${row.scheduleId}`}>schedule</Linked>
-                  )}
+                <td>
+                  <div className="flex flex-col sm:flex-row sm:gap-2 whitespace-nowrap">
+                    {explorer && at && <Linked href={`${explorer}/transaction/${at}`}>tx</Linked>}
+                    {explorer && row.scheduleId && (
+                      <Linked href={`${explorer}/schedule/${row.scheduleId}`}>schedule</Linked>
+                    )}
+                  </div>
                 </td>
               </tr>
             );
@@ -214,8 +225,6 @@ const TickTable = ({ plan, network, tokens }: { plan: PlanView; network: Recurri
     </div>
   );
 };
-
-const shortAddress = (address: string) => `${address.slice(0, 6)}…${address.slice(-4)}`;
 
 const Fact = ({ title, children }: { title: string; children: React.ReactNode }) => (
   <div className="flex flex-col gap-0.5 min-w-0">
@@ -286,7 +295,7 @@ export const PlanDetails = ({
 
       <FlowDiagram plan={plan} tokens={tokens} network={network} compact />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 rounded-xl border border-base-300 bg-base-200/40 p-4 text-sm">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,0.9fr)] gap-4 rounded-xl border border-base-300 bg-base-200/40 p-4 text-sm text-pretty">
         <Fact title="Plan details">
           <span>
             Buys {amountIn(params.amountPerTick)} → {tokens.out?.symbol ?? "token"} {formatPeriod(params.period)}
@@ -346,7 +355,7 @@ export const PlanDetails = ({
         </Fact>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] gap-4 items-start">
+      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,2.3fr)_minmax(0,1fr)] gap-4 items-start">
         <section className="rounded-2xl border border-base-300 p-4 flex flex-col gap-3">
           <h4 className="m-0 font-bold text-base">Ticks ({plan.ticks.length})</h4>
           <TickTable plan={plan} network={network} tokens={tokens} />

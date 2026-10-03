@@ -1,14 +1,15 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Panel, formatAmount } from "./common";
 import { formatUnits } from "viem";
 import type { TokenInfo } from "~~/hooks/recurring-buy/useRecurringBuy";
 import { axisTicks, cumulativeBought } from "~~/utils/recurring-buy/chart";
 import type { PlanView } from "~~/utils/recurring-buy/plan";
 
-const W = 340;
+/** Width before the card is measured; the chart is drawn at the card's width in pixels, at this height. */
+const DEFAULT_WIDTH = 340;
 const H = 240;
-const PLOT = { left: 44, right: W - 10, top: 24, bottom: H - 46 };
 /** Above this many points only the first and last are labelled. */
 const MAX_LABELS = 6;
 
@@ -22,9 +23,23 @@ const clock = (timestamp: string) =>
 const day = (timestamp: string) =>
   new Date(seconds(timestamp) * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 
+/** The width of an element, kept current: a callback ref and the width in pixels. */
+function useWidth(): [(element: Element | null) => void, number] {
+  const [element, setElement] = useState<Element | null>(null);
+  const [width, setWidth] = useState(DEFAULT_WIDTH);
+  useEffect(() => {
+    if (!element) return;
+    const observer = new ResizeObserver(([entry]) => setWidth(Math.round(entry.contentRect.width)));
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [element]);
+  return [setElement, width];
+}
+
 /** A plan's running total of the bought token, one point per tick that ran; `token` is the token it buys. */
 export const CumulativeChart = ({ plan, token }: { plan: PlanView | null; token: TokenInfo | null | undefined }) => {
   const symbol = token?.symbol ?? "token";
+  const [measure, W] = useWidth();
 
   if (!plan || !token) {
     return (
@@ -51,6 +66,7 @@ export const CumulativeChart = ({ plan, token }: { plan: PlanView | null; token:
     );
   }
 
+  const PLOT = { left: 44, right: W - 10, top: 24, bottom: H - 46 };
   const values = points.map(point => Number(formatUnits(point.total, token.decimals)));
   const yTicks = axisTicks(Math.max(...values));
   const top = yTicks.at(-1)!;
@@ -71,8 +87,9 @@ export const CumulativeChart = ({ plan, token }: { plan: PlanView | null; token:
   return (
     <Panel title={<span className="text-sm">Cumulative {symbol} received</span>} action={totalBox}>
       <svg
+        ref={measure}
         viewBox={`0 0 ${W} ${H}`}
-        className="w-full h-auto max-h-72 text-[12px]"
+        className="block w-full h-60 text-[12px]"
         role="img"
         aria-label={`${symbol} received`}
       >

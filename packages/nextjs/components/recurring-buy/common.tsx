@@ -20,6 +20,14 @@ export const Linked = ({ href, children }: { href: string; children: React.React
   </ExternalLink>
 );
 
+/** A warning in the theme's warning pair, readable in light and dark. */
+export const Warning = ({ children }: { children: React.ReactNode }) => (
+  <p className="m-0 rounded-lg bg-warning text-warning-content px-3 py-2 text-sm text-pretty">{children}</p>
+);
+
+/** "0x24d0…DA17". */
+export const shortAddress = (address: string) => `${address.slice(0, 6)}…${address.slice(-4)}`;
+
 export const Panel = ({
   title,
   action,

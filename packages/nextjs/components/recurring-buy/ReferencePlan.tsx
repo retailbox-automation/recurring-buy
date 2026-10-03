@@ -27,8 +27,8 @@ export const ReferenceOverview = () => {
           or the gas deposit runs out. A tick whose swap would buy below the floor is skipped, and the next one is still
           scheduled.
         </p>
-        <p className="m-0 flex items-center justify-center gap-3 rounded-2xl border border-primary/20 bg-primary/10 px-4 py-3 text-primary">
-          <CheckCircleIcon className="size-6 shrink-0" aria-hidden />
+        <p className="m-0 flex items-center justify-center gap-3 rounded-2xl border border-primary/20 bg-primary/10 px-4 py-3 text-primary dark:text-base-content">
+          <CheckCircleIcon className="size-6 shrink-0 text-primary" aria-hidden />
           <span>
             Every tick is executed by the network and paid by the contract. <b>Nobody presses a button.</b>
           </span>
@@ -159,10 +159,13 @@ const ReferenceCard = ({ network, query, plan, tokens }: ReturnType<typeof useRe
           <thead>
             <tr className="bg-base-200">
               <th>#</th>
-              <th>Time{oneDay && times.length > 0 && ` (${formatDay(times[0])})`}</th>
+              <th>
+                Time
+                {oneDay && times.length > 0 && <span className="block sm:inline"> ({formatDay(times[0])})</span>}
+              </th>
               <th className="hidden sm:table-cell">Swap</th>
               <th className="text-right">Received</th>
-              <th className="text-right">Gas (HBAR)</th>
+              <th className="hidden sm:table-cell text-right">Gas (HBAR)</th>
               <th>Links</th>
             </tr>
           </thead>
@@ -187,12 +190,16 @@ const ReferenceCard = ({ network, query, plan, tokens }: ReturnType<typeof useRe
                   <td className="text-right">
                     {row.outcome.kind === "bought" ? formatAmount(row.outcome.amountOut, tokenOut.decimals) : "—"}
                   </td>
-                  <td className="text-right">{at && charges[at] !== undefined ? formatAmount(charges[at], 8) : "—"}</td>
-                  <td className="space-x-2">
-                    {explorer && at && <Linked href={`${explorer}/transaction/${at}`}>tx</Linked>}
-                    {explorer && row.scheduleId && (
-                      <Linked href={`${explorer}/schedule/${row.scheduleId}`}>schedule</Linked>
-                    )}
+                  <td className="hidden sm:table-cell text-right">
+                    {at && charges[at] !== undefined ? formatAmount(charges[at], 8) : "—"}
+                  </td>
+                  <td>
+                    <div className="flex flex-col sm:flex-row sm:gap-2">
+                      {explorer && at && <Linked href={`${explorer}/transaction/${at}`}>tx</Linked>}
+                      {explorer && row.scheduleId && (
+                        <Linked href={`${explorer}/schedule/${row.scheduleId}`}>schedule</Linked>
+                      )}
+                    </div>
                   </td>
                 </tr>
               );
