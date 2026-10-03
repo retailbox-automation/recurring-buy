@@ -81,21 +81,21 @@ After that nobody signs anything. A tick costs about 1.75 HBAR in gas whatever t
 
 ## Verified on testnet
 
-This template's contract, deployed from this repository on 2026-09-30, and the reference plan the home page shows. Nobody sent a transaction for any tick: the network ran each one at its scheduled second. To check a tick yourself, see [docs/verify-ticks.md](docs/verify-ticks.md).
+This template's contract, deployed from this repository on 2026-09-30, and plan #3, the reference plan the home page shows. Nobody sent a transaction for any tick: the network ran each one at its scheduled second. To check a tick yourself, see [docs/verify-ticks.md](docs/verify-ticks.md).
 
 | What | Link |
 | --- | --- |
 | RecurringBuy contract, source verified on Sourcify (exact match) | [0.0.10795675](https://hashscan.io/testnet/contract/0.0.10795675) |
-| Plan #1 (0.05 WHBAR → SAUCE every 5 minutes, 4 buys): `start` transaction | [1790790834.555078365](https://hashscan.io/testnet/transaction/1790790834.555078365) |
-| Tick 1, run by the network: bought 2.044654 SAUCE and scheduled tick 2 | schedule [0.0.10795766](https://hashscan.io/testnet/schedule/0.0.10795766), run at [1790791132.086448208](https://hashscan.io/testnet/transaction/1790791132.086448208) |
-| Ticks 2 to 4: bought, bought, bought and completed the plan | [1790791430.054047190](https://hashscan.io/testnet/transaction/1790791430.054047190), [1790791728.078691208](https://hashscan.io/testnet/transaction/1790791728.078691208), [1790792026.001025208](https://hashscan.io/testnet/transaction/1790792026.001025208) |
-| Withdraw: the unused deposit of plan #1 back to its owner | [1790792048.020794657](https://hashscan.io/testnet/transaction/1790792048.020794657) |
+| Plan #3 (25 WHBAR → SAUCE every 3 minutes, 4 buys): `start` transaction | [1790868703.048104104](https://hashscan.io/testnet/transaction/1790868703.048104104) |
+| Tick 1, run by the network: bought 1,006.88 SAUCE and scheduled tick 2 | schedule [0.0.10810809](https://hashscan.io/testnet/schedule/0.0.10810809), run at [1790868883.063783046](https://hashscan.io/testnet/transaction/1790868883.063783046) |
+| Ticks 2 to 4: each bought; tick 4 completed the plan | [1790869062.014332390](https://hashscan.io/testnet/transaction/1790869062.014332390), [1790869240.047172656](https://hashscan.io/testnet/transaction/1790869240.047172656), [1790869419.027257104](https://hashscan.io/testnet/transaction/1790869419.027257104) |
+| Withdraw: the unused deposit of plan #3 back to its owner | [1790869859.787129293](https://hashscan.io/testnet/transaction/1790869859.787129293) |
 | A skipped tick: plan #2's floor was above the price, nothing taken, next tick scheduled | schedule [0.0.10795970](https://hashscan.io/testnet/schedule/0.0.10795970), run at [1790792373.084332104](https://hashscan.io/testnet/transaction/1790792373.084332104) |
 | `stop`: pending schedule deleted, deposit and its reservation refunded | [1790792387.304319777](https://hashscan.io/testnet/transaction/1790792387.304319777); schedule [0.0.10796029](https://hashscan.io/testnet/schedule/0.0.10796029) deleted, never run |
 | Wrap 0.1 HBAR into WHBAR with the transaction `/plans/new` sends | [1790794391.315370441](https://hashscan.io/testnet/transaction/1790794391.315370441) |
 | The same contract deployed with the Foundry variant, source verified on Sourcify (exact match) | [0.0.10796292](https://hashscan.io/testnet/contract/0.0.10796292) |
 
-Gas, fees and balances for every row are in runs E, F and G of [docs/testnet-findings.md](docs/testnet-findings.md). Before this template, a prototype of the contract ran the same mechanism: [0.0.10777783](https://hashscan.io/testnet/contract/0.0.10777783), run B.
+Gas, fees and balances for every row are in runs E to H of [docs/testnet-findings.md](docs/testnet-findings.md). Before this template, a prototype of the contract ran the same mechanism: [0.0.10777783](https://hashscan.io/testnet/contract/0.0.10777783), run B.
 
 ## Environment variables
 

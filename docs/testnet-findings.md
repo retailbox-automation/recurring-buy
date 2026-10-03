@@ -1,10 +1,10 @@
 # What was measured on Hedera testnet
 
-Two throwaway prototypes ran on Hedera testnet before this template was written, and then the template's own contract (run E), its Foundry variant (run F) and its wrap step (run G). The gas figures in the README, the comments in the code and the mirror node fixtures in `packages/nextjs/utils/recurring-buy/fixtures/` come from these runs. Code comments point here by label: `A3` is finding 3 of run A, `B7` is finding 7 of run B.
+Two throwaway prototypes ran on Hedera testnet before this template was written, and then the template's own contract (run E), its Foundry variant (run F), its wrap step (run G) and the home page's reference plan (run H). The gas figures in the README, the comments in the code and the mirror node fixtures in `packages/nextjs/utils/recurring-buy/fixtures/` come from these runs. Code comments point here by label: `A3` is finding 3 of run A, `B7` is finding 7 of run B.
 
 The template's `RecurringBuy` is a rewrite of the contract from run B. It has more in it (many plans in one contract, a failed swap caught instead of reverting the tick, per-plan gas accounting), so its gas figures differ somewhat. Run E is the template's own contract on testnet.
 
-Every run used the hashio JSON-RPC relay `https://testnet.hashio.io/api` (chain id 296) and the mirror node `https://testnet.mirrornode.hedera.com/api/v1`. The network's gas price was 109 tinybar per gas throughout.
+Every run used the hashio JSON-RPC relay `https://testnet.hashio.io/api` (chain id 296) and the mirror node `https://testnet.mirrornode.hedera.com/api/v1`. The network's gas price was 109 tinybar per gas in runs A to G and 81 in run H.
 
 SaucerSwap V2 on testnet, checked against SaucerSwap's contract list and by calling them:
 
@@ -177,6 +177,22 @@ The owner of run E, [`0.0.10795743`](https://hashscan.io/testnet/account/0.0.107
 | Wrap 0.1 HBAR | [1790794391.315370441](https://hashscan.io/testnet/transaction/1790794391.315370441): SUCCESS. 77,966 gas (estimated 85,252, limit 102,302), a fee of 8,498,294 tinybar, which is 77,966 × 109. The owner's HBAR went from 1.05954444 to 0.87456150 (0.1 wrapped and 0.08498294 of fee), its WHBAR from 0.05 to 0.15 |
 
 - **G1.** A wrap into an account already associated with WHBAR used 77,966 gas, 0.085 HBAR, a tenth of the 771,256 gas of run E's wrap, which also took an automatic association. Associating first (726,488 gas) and then wrapping costs about as much as a wrap with an automatic association, and it is what SaucerSwap asks for (D2).
+
+## Run H: plan #3, larger buys (2026-10-01)
+
+Run E's contract and owner, with buys 500 times the size of plan 1. This is the reference plan of the home page (`referencePlan` in `packages/nextjs/scaffold.config.ts`).
+
+| Step | Result |
+| --- | --- |
+| Plan 3: 25 WHBAR → SAUCE every 180 s, 4 buys, floor 956.53616 SAUCE, tick gas limit 1,900,000, deposit 17.328 HBAR | [`start`](https://hashscan.io/testnet/transaction/1790868703.048104104): SUCCESS, 1,637,955 gas, 1.3267 HBAR. Tick 1: schedule [0.0.10810809](https://hashscan.io/testnet/schedule/0.0.10810809) |
+| Tick 1 | [1790868883.063783046](https://hashscan.io/testnet/transaction/1790868883.063783046): SUCCESS. Bought 1,006.880169 SAUCE, scheduled tick 2 ([0.0.10810859](https://hashscan.io/testnet/schedule/0.0.10810859)). 1,617,951 gas, 1.3105 HBAR, paid by the contract |
+| Tick 2 | [1790869062.014332390](https://hashscan.io/testnet/transaction/1790869062.014332390): SUCCESS. Bought 1,004.101151 SAUCE, scheduled tick 3 ([0.0.10810903](https://hashscan.io/testnet/schedule/0.0.10810903)). 1,617,938 gas, 1.3105 HBAR |
+| Tick 3 | [1790869240.047172656](https://hashscan.io/testnet/transaction/1790869240.047172656): SUCCESS. Bought 1,001.320053 SAUCE, scheduled tick 4 ([0.0.10810937](https://hashscan.io/testnet/schedule/0.0.10810937)). 1,652,397 gas, 1.3384 HBAR |
+| Tick 4, the last | [1790869419.027257104](https://hashscan.io/testnet/transaction/1790869419.027257104): SUCCESS. Bought 998.469272 SAUCE, `PlanStopped(Completed)`. 195,067 gas, 0.1580 HBAR |
+| Withdraw: `stop` on the completed plan | [1790869859.787129293](https://hashscan.io/testnet/transaction/1790869859.787129293): `GasRefunded` 13.08469755 HBAR. 35,957 gas, 0.0291 HBAR |
+
+- **H1.** 100 WHBAR bought 4,010.770645 SAUCE, 40.11 per WHBAR. The four ticks cost the contract 4.11751593 HBAR, 4.1% of what they spent; the plan was charged 4.24330245 of its deposit and got 13.08469755 back.
+- **H2.** The network billed 81 tinybar per gas on this day (1,617,951 × 81 = 131,054,031 tinybar for tick 1), not 109 as in runs A to G. The schedules' payer was the contract, `0.0.10795675`.
 
 ## Relay and tooling
 

@@ -22,6 +22,6 @@ Ticks are paid from the plan's gas deposit:
 - When the tick runs, the contract measures the gas it used, charges the plan for it at the network's gas price, and puts the rest of the reservation back into the deposit. The measurement adds a fixed 40,000 gas for the bookkeeping that follows it.
 - A tick that bought and scheduled the next one used 1,605,224 gas, 1.750 HBAR. The last tick of a plan, which schedules nothing, used 182,352 gas, 0.199 HBAR. A skipped tick costs about as much as a buying one: 1,610,623 gas.
 - The contract charged each tick at the price the network billed it (109 tinybar per gas on testnet), for 37,323 to 39,323 gas more than the network counted (E3): the allowance for the settlement is a little generous, and the difference, about 0.04 HBAR per tick, stays in the contract.
-- The app asks for one full reservation per buy. For four buys that is 17.328 HBAR up front. The reference plan was charged 5.617 HBAR of it for its four ticks and got 11.711 HBAR back when its owner withdrew.
+- The app asks for one full reservation per buy. For four buys that is 17.328 HBAR up front. Plan 1 of run E was charged 5.617 HBAR of it for its four ticks and got 11.711 HBAR back when its owner withdrew.
 
 Scheduling the next tick is most of a tick's gas (a tick that schedules nothing used 182,352 of the 1,605,224), and the amount you buy does not change it. A buy therefore costs about 1.75 HBAR in gas whatever its size, and small, frequent buys are poor value.
