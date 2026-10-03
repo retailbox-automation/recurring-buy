@@ -1,10 +1,10 @@
 # What was measured on Hedera testnet
 
-Two throwaway prototypes ran on Hedera testnet before this template was written, and then the template's own contract (run E), its Foundry variant (run F), its wrap step (run G) and the home page's reference plan (run H). The gas figures in the README, the comments in the code and the mirror node fixtures in `packages/nextjs/utils/recurring-buy/fixtures/` come from these runs. Code comments point here by label: `A3` is finding 3 of run A, `B7` is finding 7 of run B.
+Two throwaway prototypes ran on Hedera testnet before this template was written, and then the template's own contract (run E), its Foundry variant (run F), its wrap step (run G), the home page's reference plan (run H) and the app's own screens (run I). The gas figures in the README, the comments in the code and the mirror node fixtures in `packages/nextjs/utils/recurring-buy/fixtures/` come from these runs. Code comments point here by label: `A3` is finding 3 of run A, `B7` is finding 7 of run B.
 
 The template's `RecurringBuy` is a rewrite of the contract from run B. It has more in it (many plans in one contract, a failed swap caught instead of reverting the tick, per-plan gas accounting), so its gas figures differ somewhat. Run E is the template's own contract on testnet.
 
-Every run used the hashio JSON-RPC relay `https://testnet.hashio.io/api` (chain id 296) and the mirror node `https://testnet.mirrornode.hedera.com/api/v1`. The network's gas price was 109 tinybar per gas in runs A to G and 81 in run H.
+Every run used the hashio JSON-RPC relay `https://testnet.hashio.io/api` (chain id 296) and the mirror node `https://testnet.mirrornode.hedera.com/api/v1`. The network's gas price was 109 tinybar per gas in runs A to G, 81 in run H and 83 in run I.
 
 SaucerSwap V2 on testnet, checked against SaucerSwap's contract list and by calling them:
 
@@ -193,6 +193,21 @@ Run E's contract and owner, with buys 500 times the size of plan 1. This is the 
 
 - **H1.** 100 WHBAR bought 4,010.770645 SAUCE, 40.11 per WHBAR. The four ticks cost the contract 4.11751593 HBAR, 4.1% of what they spent; the plan was charged 4.24330245 of its deposit and got 13.08469755 back.
 - **H2.** The network billed 81 tinybar per gas on this day (1,617,951 × 81 = 131,054,031 tinybar for tick 1), not 109 as in runs A to G. The schedules' payer was the contract, `0.0.10795675`.
+
+## Run I: the app's screens, and a stop that ran out of gas (2026-10-03)
+
+Run E's owner signed every transaction in the browser from `/plans/new` and `/plans`, with a burner wallet holding its key.
+
+| Step | Result |
+| --- | --- |
+| Plan 5: 25 WHBAR → SAUCE every 180 s, 4 buys, deposit 17.328 HBAR | wrap 98 HBAR [1791047384.347537104](https://hashscan.io/testnet/transaction/1791047384.347537104), approve 100 WHBAR [1791047391.607649698](https://hashscan.io/testnet/transaction/1791047391.607649698), `start` [1791047399.661345458](https://hashscan.io/testnet/transaction/1791047399.661345458): SUCCESS |
+| Ticks 1 to 4, run by the network and paid by the contract | [1791047578.059556495](https://hashscan.io/testnet/transaction/1791047578.059556495) (schedule [0.0.10844936](https://hashscan.io/testnet/schedule/0.0.10844936)), [1791047757.007610208](https://hashscan.io/testnet/transaction/1791047757.007610208), [1791047935.027653208](https://hashscan.io/testnet/transaction/1791047935.027653208), [1791048114.081935104](https://hashscan.io/testnet/transaction/1791048114.081935104): bought 994.859215, 992.022526, 989.197953 and 986.385426 SAUCE |
+| Withdraw: `stop` on the completed plan | [1791048250.160861889](https://hashscan.io/testnet/transaction/1791048250.160861889): `GasRefunded` 13.00862771 HBAR |
+| Plan 6: 1 WHBAR, 2 buys; `stop` with tick 1 pending | [1791048401.962471508](https://hashscan.io/testnet/transaction/1791048401.962471508): `CONTRACT_REVERT_EXECUTED`, 89,011 of 89,841 gas (I1) |
+| Plan 6, `stop` again after the fix, with tick 2 pending | [1791048614.883699376](https://hashscan.io/testnet/transaction/1791048614.883699376): SUCCESS, 118,556 gas. Schedule [0.0.10845150](https://hashscan.io/testnet/schedule/0.0.10845150) deleted, `GasRefunded` 7.289271 HBAR |
+| Plan 7: 1 WHBAR, 2 buys, stopped before its first tick | `start` [1791048746.362116467](https://hashscan.io/testnet/transaction/1791048746.362116467), `stop` [1791048766.101730866](https://hashscan.io/testnet/transaction/1791048766.101730866): 118,556 gas. Schedule [0.0.10845187](https://hashscan.io/testnet/schedule/0.0.10845187) deleted, `GasRefunded` 8.664 HBAR, the whole deposit |
+
+- **I1.** The gas limit of plan 6's first `stop` was `eth_estimateGas` plus 20%, 89,841, so the estimate was 74,868; the `stop` of run E was sent with 157,525 (an estimate of 131,271). A `stop` that deletes a pending schedule uses 118,556, so the estimate can fall short. The app now sends at least that plus 20% (`stopGasLimit` in `packages/nextjs/utils/recurring-buy/costs.ts`).
 
 ## Relay and tooling
 
