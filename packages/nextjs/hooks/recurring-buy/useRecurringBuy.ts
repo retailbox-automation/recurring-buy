@@ -95,6 +95,18 @@ export function useReferenceNetwork(): RecurringBuyNetwork {
   );
 }
 
+/** The reference plan with its network and tokens, for the home page. */
+export function useReferencePlan() {
+  const network = useReferenceNetwork();
+  const query = usePlan(network, referencePlan.planId);
+  const plan = query.data?.plan ?? null;
+  const tokens = {
+    in: useTokenInfo(network, plan?.params.tokenIn).data,
+    out: useTokenInfo(network, plan?.params.tokenOut).data,
+  };
+  return { network, query, plan, tokens };
+}
+
 const nowSeconds = () => Math.floor(Date.now() / 1000);
 
 /**

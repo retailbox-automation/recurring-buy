@@ -82,6 +82,13 @@ export function formatToken(amount: bigint, token: string, info: TokenInfo | nul
   return info ? `${formatUnits(amount, info.decimals)} ${info.symbol}` : `${amount} (token ${hederaIdOf(token)})`;
 }
 
+/** "4,010.77", "1,004.10", "25": a token amount with 2 decimals unless it is whole. */
+export function formatAmount(amount: bigint, decimals: number): string {
+  const value = Number(formatUnits(amount, decimals));
+  const digits = Number.isInteger(value) ? 0 : 2;
+  return value.toLocaleString("en-US", { minimumFractionDigits: digits, maximumFractionDigits: 2 });
+}
+
 /** HBAR from tinybar, rounded to 4 decimals for display. */
 export const formatHbar = (tinybar: bigint) =>
   `${Number(formatUnits(tinybar, 8)).toLocaleString(undefined, { maximumFractionDigits: 4 })} HBAR`;

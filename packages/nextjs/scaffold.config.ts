@@ -55,10 +55,10 @@ const scaffoldConfig = {
 
   referencePlan: {
     chainId: chains.hederaTestnet.id,
-    // RecurringBuy 0.0.10795675 on testnet, deployed from this repository on 2026-09-30. Plan 1 bought SAUCE with
-    // WHBAR four times, five minutes apart (docs/testnet-findings.md, run E).
+    // RecurringBuy 0.0.10795675 on testnet, deployed from this repository on 2026-09-30. Plan 3 bought SAUCE with
+    // 25 WHBAR every 3 minutes, 4 buys, on 2026-10-01 (docs/testnet-findings.md, run H).
     contract: "0x24d06Cfba7265A93c5A20743135F01f29C49DA17",
-    planId: 1n,
+    planId: 3n,
   },
 } as const satisfies ScaffoldConfig;
 

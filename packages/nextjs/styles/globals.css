@@ -24,6 +24,44 @@
   --color-hedera-cobalt: #2d84eb;
   --color-hedera-violet: #4f46e5;
   --color-hedera-smoke: #9b9b9d;
+
+  --animate-flow-x: flow-x 3.6s linear infinite;
+  --animate-flow-y: flow-y 3.6s linear infinite;
+  --animate-draw: draw 1.4s ease-out;
+
+  @keyframes flow-x {
+    from {
+      transform: translateX(0);
+      opacity: 0;
+    }
+    20%,
+    80% {
+      opacity: 1;
+    }
+    to {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+  }
+  @keyframes flow-y {
+    from {
+      transform: translateY(0);
+      opacity: 0;
+    }
+    20%,
+    80% {
+      opacity: 1;
+    }
+    to {
+      transform: translateY(100%);
+      opacity: 0;
+    }
+  }
+  @keyframes draw {
+    from {
+      stroke-dashoffset: 1;
+    }
+  }
 }
 
 @plugin "daisyui" {

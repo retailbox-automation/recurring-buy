@@ -90,7 +90,7 @@ const ChainLine = ({ status, now }: { status: ChainStatus; now: number }) => {
   }
 };
 
-const OUTCOME_BADGE: Record<TickRow["outcome"]["kind"], [string, string]> = {
+export const OUTCOME_BADGE: Record<TickRow["outcome"]["kind"], [string, string]> = {
   bought: ["badge-success", "Bought"],
   skipped: ["badge-warning", "Skipped"],
   "pull-failed": ["badge-error", "Pull failed"],
