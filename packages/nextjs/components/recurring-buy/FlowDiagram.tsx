@@ -49,7 +49,7 @@ const Allowance = ({ plan, token }: { plan: PlanView | null; token: TokenInfo | 
       {cap > 0n && (
         <>
           <progress className="progress progress-primary h-2" value={Number(spent)} max={Number(cap)} />
-          <div className="flex justify-between text-xs text-base-content/60">
+          <div className="flex flex-wrap justify-between gap-x-2 text-xs text-base-content/60">
             <span>{amount(spent)} spent</span>
             <span>capped</span>
           </div>
@@ -64,9 +64,9 @@ const Delivered = ({ plan, token }: { plan: PlanView | null; token: TokenInfo | 
   if (!plan || !token) return <Placeholder />;
   const { received } = boughtTotals(plan.ticks);
   return (
-    <div className="self-stretch rounded-xl bg-success/15 border border-success/30 px-4 py-3 text-center">
-      <div className="text-base 2xl:text-lg font-bold tabular-nums whitespace-nowrap">
-        + {formatAmount(received, token.decimals)} {token.symbol}
+    <div className="self-stretch rounded-xl bg-success/15 border border-success/30 px-3 py-3 text-center">
+      <div className="text-base 2xl:text-lg font-bold tabular-nums">
+        <span className="whitespace-nowrap">+ {formatAmount(received, token.decimals)}</span> {token.symbol}
       </div>
       <div className="text-sm text-base-content/70">delivered to your wallet</div>
     </div>
@@ -193,7 +193,7 @@ export const FlowDiagram = ({
                 <p className="m-0 mt-1 text-[13px] leading-snug text-base-content/70">{compact ? brief : body}</p>
               </div>
             </div>
-            {!compact && <div className="mt-auto lg:h-[6.5rem] flex flex-col items-center gap-3">{visual}</div>}
+            {!compact && <div className="mt-auto lg:min-h-[6.5rem] flex flex-col items-center gap-3">{visual}</div>}
           </li>
         </Fragment>
       ))}
