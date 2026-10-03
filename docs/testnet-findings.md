@@ -1,6 +1,6 @@
 # What was measured on Hedera testnet
 
-Two throwaway prototypes ran on Hedera testnet before this template was written, and then the template's own contract (run E), its Foundry variant (run F), its wrap step (run G), the home page's reference plan (run H) and the app's own screens (run I). The gas figures in the README, the comments in the code and the mirror node fixtures in `packages/nextjs/utils/recurring-buy/fixtures/` come from these runs. Code comments point here by label: `A3` is finding 3 of run A, `B7` is finding 7 of run B.
+Two throwaway prototypes ran on Hedera testnet before this template was written, and then the template's own contract (run E), its Foundry variant (run F), its wrap step (run G), the home page's reference plan (run H) the app's own screens (run I) and the demo video (run J). The gas figures in the README, the comments in the code and the mirror node fixtures in `packages/nextjs/utils/recurring-buy/fixtures/` come from these runs. Code comments point here by label: `A3` is finding 3 of run A, `B7` is finding 7 of run B.
 
 The template's `RecurringBuy` is a rewrite of the contract from run B. It has more in it (many plans in one contract, a failed swap caught instead of reverting the tick, per-plan gas accounting), so its gas figures differ somewhat. Run E is the template's own contract on testnet.
 
@@ -208,6 +208,17 @@ Run E's owner signed every transaction in the browser from `/plans/new` and `/pl
 | Plan 7: 1 WHBAR, 2 buys, stopped before its first tick | `start` [1791048746.362116467](https://hashscan.io/testnet/transaction/1791048746.362116467), `stop` [1791048766.101730866](https://hashscan.io/testnet/transaction/1791048766.101730866): 118,556 gas. Schedule [0.0.10845187](https://hashscan.io/testnet/schedule/0.0.10845187) deleted, `GasRefunded` 8.664 HBAR, the whole deposit |
 
 - **I1.** The gas limit of plan 6's first `stop` was `eth_estimateGas` plus 20%, 89,841, so the estimate was 74,868; the `stop` of run E was sent with 157,525 (an estimate of 131,271). A `stop` that deletes a pending schedule uses 118,556, so the estimate can fall short. The app now sends at least that plus 20% (`stopGasLimit` in `packages/nextjs/utils/recurring-buy/costs.ts`).
+
+## Run J: the demo video (2026-10-03)
+
+The plans in the submission video, signed in the browser from `/plans/new` and `/plans` by run E's owner with a burner wallet, on a production build of the app (`next build`, `next start`). The network's gas price was 83 tinybar per gas.
+
+| Step | Result |
+| --- | --- |
+| Plan 8: 25 WHBAR → SAUCE every 180 s, 4 buys, deposit 17.328 HBAR | wrap 98 HBAR [1791063789.257899200](https://hashscan.io/testnet/transaction/1791063789.257899200), approve 100 WHBAR [1791063795.659713160](https://hashscan.io/testnet/transaction/1791063795.659713160), `start` [1791063801.801587104](https://hashscan.io/testnet/transaction/1791063801.801587104): SUCCESS, `start` 1,637,955 gas |
+| Ticks 1 to 4, run by the network and paid by the contract | [1791063980.122177208](https://hashscan.io/testnet/transaction/1791063980.122177208) (schedule [0.0.10847683](https://hashscan.io/testnet/schedule/0.0.10847683), payer the contract `0.0.10795675`), [1791064160.002043208](https://hashscan.io/testnet/transaction/1791064160.002043208), [1791064339.037915854](https://hashscan.io/testnet/transaction/1791064339.037915854), [1791064517.034955392](https://hashscan.io/testnet/transaction/1791064517.034955392): bought 983.462493, 980.674375, 977.898096 and 975.133589 SAUCE; 1,617,911, 1,617,938, 1,617,910 and 195,069 gas (the last tick schedules nothing) |
+| Withdraw: `stop` on the completed plan | [1791065135.136112104](https://hashscan.io/testnet/transaction/1791065135.136112104): 35,957 gas, `GasRefunded` 13.0086 HBAR |
+| Plan 9: 1 WHBAR, 2 buys, stopped before its first tick | `start` [1791065262.139307322](https://hashscan.io/testnet/transaction/1791065262.139307322), `stop` [1791065283.318878179](https://hashscan.io/testnet/transaction/1791065283.318878179): schedule [0.0.10847944](https://hashscan.io/testnet/schedule/0.0.10847944) deleted, never run; 8.664 HBAR refunded, the whole deposit |
 
 ## Relay and tooling
 
