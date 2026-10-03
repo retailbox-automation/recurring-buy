@@ -10,7 +10,7 @@ A scaffold-hbar template for recurring buys on SaucerSwap V2. One contract, `Rec
 - `packages/foundry`: the same `contracts/`, byte for byte, with tests in Solidity and a `forge script` deploy. A project created from the template has one of the two; see "Two frameworks" below.
 - `packages/nextjs`: the app (Next.js App Router, RainbowKit, wagmi, viem, DaisyUI).
 - `packages/saucerswap`: `@sh/saucerswap`, a SaucerSwap V2 client with no React in it. See its README.
-- `docs/testnet-findings.md`: what two prototype runs, this contract (run E), its Foundry variant (run F), its wrap step (run G) and the home page's reference plan (run H) measured on testnet. Code comments cite it by label (`A3`, `B7`). Next to it: `costs.md`, `how-it-works.md` (with the known limitations), `verify-ticks.md` and `checks.md`, which hold what the README leaves out.
+- `docs/testnet-findings.md`: what two prototype runs, this contract (run E), its Foundry variant (run F), its wrap step (run G), the home page's reference plan (run H), the app's screens (run I) and the demo video (run J) measured on testnet. Code comments cite it by label (`A3`, `B7`). Next to it: `costs.md`, `how-it-works.md` (with the known limitations), `verify-ticks.md`, `checks.md` and `cli-manifest-fallback.md` (what create-scaffold-hbar does when it cannot read `template.json`), which hold what the README leaves out.
 
 ## Package manager
 

@@ -115,7 +115,7 @@ None is required: the app builds and runs without a `.env`. The Foundry variant 
 
 ## More
 
-[How it works](docs/how-it-works.md) (the contract, the Hedera services in a tick, the layout, known limitations) · [Costs](docs/costs.md) · [Checking a tick](docs/verify-ticks.md) · [Template checks and Hedera Harness](docs/checks.md) · [Everything measured on testnet](docs/testnet-findings.md) · [The Foundry package](packages/foundry/README.md) · [AGENTS.md](AGENTS.md), for changing the template with or without a coding agent.
+[How it works](docs/how-it-works.md) (the contract, the Hedera services in a tick, the layout, known limitations) · [Costs](docs/costs.md) · [Checking a tick](docs/verify-ticks.md) · [Template checks and Hedera Harness](docs/checks.md) · [When the CLI cannot read template.json](docs/cli-manifest-fallback.md) · [Everything measured on testnet](docs/testnet-findings.md) · [The Foundry package](packages/foundry/README.md) · [AGENTS.md](AGENTS.md), for changing the template with or without a coding agent.
 
 ## License
 
