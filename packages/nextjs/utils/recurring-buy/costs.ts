@@ -14,6 +14,8 @@ export const MEASURED_GAS = {
   prepareToken: 1_476_561n,
   /** A tick that bought and scheduled the next one (E4). */
   tick: 1_605_224n,
+  /** `stop` with a pending tick: deletes its schedule and refunds the deposit (E4). */
+  stop: 118_556n,
 } as const;
 
 /**
@@ -24,6 +26,13 @@ export const tickCost = (price: GasPrice) => MEASURED_GAS.tick * price.contractC
 
 /** The gas limit to send with a transaction: its estimate plus 20%. Hedera bills the gas used, not the limit (E1). */
 export const gasLimitFor = (estimate: bigint) => (estimate * 12n) / 10n;
+
+/**
+ * The gas limit for `stop`. `eth_estimateGas` can come out far below what deleting a pending schedule takes (74,868
+ * for a stop that needed 118,556, I1), so the limit never goes below the measured gas.
+ */
+export const stopGasLimit = (estimate: bigint) =>
+  gasLimitFor(estimate > MEASURED_GAS.stop ? estimate : MEASURED_GAS.stop);
 
 export type SignStep = {
   kind: "associate-out" | "associate-in" | "wrap" | "approve" | "start";

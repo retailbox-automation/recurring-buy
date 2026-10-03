@@ -18,7 +18,7 @@ import {
 import { useTransactor } from "~~/hooks/scaffold-hbar";
 import { recurringBuyAbi } from "~~/utils/recurring-buy/abi";
 import { boughtTotals } from "~~/utils/recurring-buy/chart";
-import { gasLimitFor } from "~~/utils/recurring-buy/costs";
+import { stopGasLimit } from "~~/utils/recurring-buy/costs";
 import { type PlanView, ticksRun } from "~~/utils/recurring-buy/plan";
 
 /**
@@ -59,7 +59,7 @@ const StopButton = ({ plan, network }: { plan: PlanView; network: RecurringBuyNe
           functionName: "stop",
           args: [plan.planId, address],
         } as const;
-        const gas = gasLimitFor(await publicClient!.estimateContractGas(request));
+        const gas = stopGasLimit(await publicClient!.estimateContractGas(request));
         const hash = await writeContractAsync({ ...request, gas, chainId, ...(await fees()) });
         const receipt = await publicClient!.waitForTransactionReceipt({ hash });
         // A reverted stop still returns a receipt; useTransactor reports it after this function returns.

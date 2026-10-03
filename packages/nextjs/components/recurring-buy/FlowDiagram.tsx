@@ -65,7 +65,7 @@ const Delivered = ({ plan, token }: { plan: PlanView | null; token: TokenInfo | 
   const { received } = boughtTotals(plan.ticks);
   return (
     <div className="self-stretch rounded-xl bg-success/15 border border-success/30 px-4 py-3 text-center">
-      <div className="text-lg font-bold tabular-nums whitespace-nowrap">
+      <div className="text-base 2xl:text-lg font-bold tabular-nums whitespace-nowrap">
         + {formatAmount(received, token.decimals)} {token.symbol}
       </div>
       <div className="text-sm text-base-content/70">delivered to your wallet</div>

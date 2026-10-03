@@ -38,7 +38,7 @@ import {
 type Tokens = { in: TokenInfo | null | undefined; out: TokenInfo | null | undefined };
 
 const STATUS_BADGE: Record<ChainStatus["kind"], [string, string]> = {
-  running: ["badge-success badge-soft", "Running"],
+  running: ["badge-success badge-soft text-base-content", "Running"],
   due: ["badge-info badge-soft", "Buying now"],
   stopped: ["badge-error badge-soft", "Stopped"],
   broken: ["badge-error", "Chain broken"],
@@ -48,7 +48,7 @@ const STATUS_BADGE: Record<ChainStatus["kind"], [string, string]> = {
 export const StatusBadge = ({ status }: { status: ChainStatus }) => {
   const [style, label] =
     status.kind === "stopped" && status.reason === "Completed"
-      ? ["badge-success badge-soft", "Completed"]
+      ? ["badge-success badge-soft text-base-content", "Completed"]
       : STATUS_BADGE[status.kind];
   return <span className={`badge ${style}`}>{label}</span>;
 };
@@ -107,8 +107,8 @@ const ChainLine = ({ status, now }: { status: ChainStatus; now: number }) => {
 };
 
 export const OUTCOME_BADGE: Record<TickRow["outcome"]["kind"], [string, string]> = {
-  bought: ["badge-success badge-soft", "Bought"],
-  skipped: ["badge-warning badge-soft", "Skipped"],
+  bought: ["badge-success badge-soft text-base-content", "Bought"],
+  skipped: ["badge-warning badge-soft text-base-content", "Skipped"],
   "pull-failed": ["badge-error badge-soft", "Pull failed"],
   reverted: ["badge-error badge-soft", "Reverted"],
   waiting: ["badge-info badge-soft", "Scheduled"],

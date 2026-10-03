@@ -1,6 +1,6 @@
 // Fixtures are testnet mirror node responses of 2026-09-30: the account 0.0.10012993 with its WHBAR and SAUCE
 // relationships (the account record keeps five fields).
-import { MEASURED_GAS, type SignStep, gasLimitFor, stepsToSign, tickCost, walletState } from "./costs";
+import { MEASURED_GAS, type SignStep, gasLimitFor, stepsToSign, stopGasLimit, tickCost, walletState } from "./costs";
 import ownerSauce from "./fixtures/account-0.0.10012993-sauce.json";
 import ownerWhbar from "./fixtures/account-0.0.10012993-whbar.json";
 import owner from "./fixtures/account-0.0.10012993.json";
@@ -29,6 +29,14 @@ describe("gasLimitFor", () => {
   it("adds 20% to an estimate, as the wrap of run G was sent", () => {
     // eth_estimateGas said 85,252; the transaction carried a limit of 102,302 and used 77,966 (G1).
     assert.equal(gasLimitFor(85_252n), 102_302n);
+  });
+});
+
+describe("stopGasLimit", () => {
+  it("never goes below what a stop with a pending tick used", () => {
+    // Plan 6's stop was sent with 74,868 × 1.2 = 89,841 and ran out of gas at 89,011 (I1).
+    assert.equal(stopGasLimit(74_868n), gasLimitFor(118_556n));
+    assert.equal(stopGasLimit(131_271n), gasLimitFor(131_271n));
   });
 });
 
