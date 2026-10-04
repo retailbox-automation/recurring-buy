@@ -4,6 +4,8 @@ Buy a token on SaucerSwap on a schedule: the same amount every hour, day or week
 
 This is a [scaffold-hbar](https://docs.hedera.com/solutions/tools/scaffold-hbar/index) template: a Solidity contract, its tests, and a Next.js app in one workspace, for Hedera testnet and mainnet. The contract comes with Hardhat or with Foundry, as you choose.
 
+**CI** [![Template gate](https://github.com/retailbox-automation/recurring-buy/actions/workflows/gate.yml/badge.svg?branch=main)](https://github.com/retailbox-automation/recurring-buy/actions/workflows/gate.yml): on every push to `main` the [template gate](https://github.com/retailbox-automation/recurring-buy/actions/workflows/gate.yml) scaffolds this template from GitHub with create-scaffold-hbar, then installs, lints, builds, tests and starts the result for 10 combinations of Node version, package manager and framework. [docs/checks.md](docs/checks.md) lists the checks.
+
 ## What it does
 
 You describe a plan: "buy SAUCE with 0.05 WHBAR every day, four times, and never accept less than 1.94 SAUCE for a buy". Then:

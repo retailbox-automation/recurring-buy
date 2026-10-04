@@ -16,7 +16,9 @@
 
 `local-gate.sh` scaffolds the template with create-scaffold-hbar into a temporary directory (with `--local` the CLI copies the last commit instead of downloading it), then runs install, lint with zero warnings, type checks, contract compile, `next build`, and the contract, app and `@sh/saucerswap` tests with an empty environment. It scaffolds the manifest's default framework, Hardhat; `GATE_FRAMEWORK=foundry` scaffolds the Foundry variant. It starts the built app without a `.env` and requests every route listed in `.harness/validators/playwright-smoke.yaml`. It also scans the scaffold and the repository history for secrets and checks the MIT licence. Until the README carries a testnet transaction link the testnet item shows `PENDING`; `--strict` turns that into a failure.
 
-`.github/workflows/gate.yml` runs the same gate on Node 20.18.3, 22 and 24, for Yarn, npm@10 and npm@12, and the Foundry variant on Node 22 with both package managers. It runs only in a repository that has `template.json`. The CLI deletes that file from the projects it creates, so there the workflow stays idle, and `tools/gate/` and `gate.yml` can be deleted.
+`.github/workflows/gate.yml` runs the same gate on Node 20.18.3, 22 and 24, for Yarn, npm@10 and npm@12, and the Foundry variant on Node 22 with both package managers, with create-scaffold-hbar 0.4.1 (`GATE_CLI_VERSION`). It runs only in a repository that has `template.json`. The CLI deletes that file from the projects it creates, so there the workflow stays idle, and `tools/gate/` and `gate.yml` can be deleted.
+
+When the CLI cannot read `template.json` from GitHub it uses its own defaults ([cli-manifest-fallback.md](cli-manifest-fallback.md)). The gate recognises that, a `FoundryValidationError` or a Foundry project from this Hardhat-default template, and scaffolds again, up to 3 times, waiting for GitHub's rate limit to reset when it is used up (`tools/gate/scaffold-retry.mjs`). Any other scaffold failure fails at once, and so does a fallback on all 3 attempts, with the reason and GitHub's remaining rate limit in the G1 row.
 
 ## Hedera Harness
 

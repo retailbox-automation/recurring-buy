@@ -16,12 +16,15 @@
 #              Without it G6 is reported as PENDING while the template is being built.
 #
 # Environment:
-#   GATE_CLI_VERSION  create-scaffold-hbar version to run (default 0.4.0)
+#   GATE_CLI_VERSION  create-scaffold-hbar version to run (default 0.4.1)
 #   GATE_FRAMEWORK    hardhat or foundry to scaffold (default: the manifest's default).
 #                     The Foundry leg needs forge on PATH.
 #   GATE_ROUTES       space-separated routes to probe (default: paths in
 #                     .harness/validators/playwright-smoke.yaml, else "/")
 #   GATE_KEEP=1       keep the work directory (scaffold + logs) after the run
+#   GATE_SCAFFOLD_PAUSE, GATE_SCAFFOLD_MAX_WAIT
+#                     waits between scaffold attempts when the CLI cannot read
+#                     template.json from GitHub; see scaffold-retry.mjs
 #
 # Requires: node, git, curl, tar; yarn for the yarn leg; forge for the Foundry leg; gh for private repos.
 # Run install in the repository that holds this script first (the manifest
@@ -31,7 +34,7 @@
 
 set -uo pipefail
 
-usage() { sed -n '2,28p' "$0" | sed 's/^# \{0,1\}//'; exit 2; }
+usage() { sed -n '2,31p' "$0" | sed 's/^# \{0,1\}//'; exit 2; }
 
 [[ $# -ge 1 ]] || usage
 LOCAL=0
@@ -50,7 +53,7 @@ OWNER="${BASH_REMATCH[1]}"
 REPO="${BASH_REMATCH[2]}"
 REF="${BASH_REMATCH[4]:-main}"
 
-CLI_VERSION="${GATE_CLI_VERSION:-0.4.0}"
+CLI_VERSION="${GATE_CLI_VERSION:-0.4.1}"
 GATE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WORK="$(mktemp -d "${TMPDIR:-/tmp}/scaffold-gate.XXXXXX")"
 LOGS="$WORK/logs"
@@ -167,22 +170,30 @@ elif [[ "$PRIVATE" != "false" ]]; then
 elif [[ "$FW" != "$DEFAULT_FW" ]]; then
   SCAFFOLD_ARGS+=(-s "$FW")
 fi
+# Without -s the CLI takes the framework from template.json, which it reads from GitHub's API
+# without a token. When that read fails it uses its own defaults; scaffold-retry.mjs runs the
+# scaffold again (up to 3 times) and fails with the reason when every attempt falls back.
+ATTEMPTS=1
+[[ " ${SCAFFOLD_ARGS[*]} " == *" -s "* ]] || ATTEMPTS=3
 started=$SECONDS
-(cd "$WORK" && "${CLEAN_ENV[@]}" ${SCAFFOLD_ENV[@]+"${SCAFFOLD_ENV[@]}"} npx -y "create-scaffold-hbar@$CLI_VERSION" "${SCAFFOLD_ARGS[@]}") >"$LOGS/scaffold.log" 2>&1
+G1_NOTE="$(node "$GATE_DIR/scaffold-retry.mjs" --app "$APP" --framework "$FW" --log "$LOGS/scaffold.log" --attempts "$ATTEMPTS" -- \
+  "${CLEAN_ENV[@]}" ${SCAFFOLD_ENV[@]+"${SCAFFOLD_ENV[@]}"} npx -y "create-scaffold-hbar@$CLI_VERSION" "${SCAFFOLD_ARGS[@]}")"
 code=$?
 G1_SECONDS=$((SECONDS - started))
-if [[ $code -eq 0 && -f "$APP/package.json" ]]; then
-  record G1 "scaffold: npx create-scaffold-hbar@$CLI_VERSION --template $TEMPLATE_REF ($FW)" PASS "$G1_SECONDS" "includes the CLI's own install and format"
+if [[ $code -eq 0 ]]; then
+  record G1 "scaffold: npx create-scaffold-hbar@$CLI_VERSION --template $TEMPLATE_REF ($FW)" PASS "$G1_SECONDS" "includes the CLI's own install and format${G1_NOTE:+; $G1_NOTE}"
   SCAFFOLD_OK=1
 else
   echo "---- scaffold.log (exit $code), last 30 lines ----" >&2; tail -n 30 "$LOGS/scaffold.log" >&2
-  record G1 "scaffold: npx create-scaffold-hbar@$CLI_VERSION --template $TEMPLATE_REF ($FW)" FAIL "$G1_SECONDS" "exit $code"
+  record G1 "scaffold: npx create-scaffold-hbar@$CLI_VERSION --template $TEMPLATE_REF ($FW)" FAIL "$G1_SECONDS" "${G1_NOTE:-exit $code}"
   SCAFFOLD_OK=0
 fi
 
 # Must-differ control for G2: without -s the CLI picks the framework from our manifest;
 # if it could not read the manifest it would fall back to Foundry.
-if [[ $SCAFFOLD_OK -eq 1 && $LOCAL -eq 0 && "$PRIVATE" == "false" && -n "$DEFAULT_FW" && "$FW" == "$DEFAULT_FW" ]]; then
+if [[ $code -eq 3 ]]; then
+  G2_NOTE="$G2_NOTE manifest-applied check not possible: the CLI did not read template.json (G1)"
+elif [[ $SCAFFOLD_OK -eq 1 && $LOCAL -eq 0 && "$PRIVATE" == "false" && -n "$DEFAULT_FW" && "$FW" == "$DEFAULT_FW" ]]; then
   if [[ -d "$APP/packages/$DEFAULT_FW" ]]; then
     G2_NOTE="$G2_NOTE manifest applied by the CLI (packages/$DEFAULT_FW present)"
   else

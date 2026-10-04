@@ -10,6 +10,7 @@ import path from "node:path";
 import { after, test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { contractCopyProblems } from "./same-contracts.mjs";
+import { EXIT_FALLBACK, classifyScaffold, main as scaffoldMain, scaffoldWithRetry } from "./scaffold-retry.mjs";
 import { scanTree, selfTest } from "./scan-secrets.mjs";
 import { validateTemplateJson } from "./validate-template-json.mjs";
 
@@ -153,4 +154,128 @@ test("contract copies: a changed byte or a missing file fails", () => {
   assert.match(contractCopyProblems(tmpRepo(missing)).join("\n"), /packages\/hardhat\/contracts\/A\.sol has no copy/);
   assert.equal(runNode("same-contracts.mjs", [tmpRepo(missing)]).status, 1);
   assert.equal(runNode("same-contracts.mjs", [tmpRepo(contracts)]).status, 0);
+});
+
+// ---- scaffold-retry: a scaffold where the CLI used its defaults instead of template.json runs again;
+// any other failure does not, and a fallback on every attempt fails.
+
+const project = packageDirs =>
+  tmpRepo({
+    "package.json": "{}",
+    ...Object.fromEntries(packageDirs.map(dir => [`packages/${dir}/package.json`, "{}"])),
+  });
+const foundryError = "ERROR Error occurred FoundryValidationError:\n    Could not parse foundry version.";
+
+test("scaffold: a project with the manifest's framework is ok", () => {
+  const appDir = project(["hardhat", "nextjs"]);
+  assert.equal(classifyScaffold({ code: 0, output: "", appDir, framework: "hardhat" }).outcome, "ok");
+});
+
+test("scaffold: the CLI's own defaults are a fallback; every other failure is not", () => {
+  const none = path.join(tmpRepo({}), "app");
+  const cases = [
+    // [what happened, exit code, output, project directory, framework, outcome]
+    ["FoundryValidationError without -s", 1, foundryError, none, "hardhat", "fallback"],
+    ["Foundry project instead of Hardhat", 0, "", project(["foundry"]), "hardhat", "fallback"],
+    ["FoundryValidationError with -s foundry", 1, foundryError, none, "foundry", "failed"],
+    ["another CLI error", 1, "Error: template not found", none, "hardhat", "failed"],
+    ["no package for the framework", 0, "", project(["nextjs"]), "hardhat", "failed"],
+    ["exit 0 and no project", 0, "", none, "hardhat", "failed"],
+  ];
+  for (const [label, code, output, appDir, framework, outcome] of cases) {
+    assert.equal(classifyScaffold({ code, output, appDir, framework }).outcome, outcome, label);
+  }
+});
+
+async function retry(outcomes) {
+  const waits = [];
+  const result = await scaffoldWithRetry({
+    attempts: 3,
+    runOnce: n => ({ outcome: outcomes[n - 1], reason: `attempt ${n}` }),
+    wait: n => waits.push(n),
+  });
+  return [result.outcome, result.attempts, waits];
+}
+
+test("scaffold retry: fallbacks are retried until an attempt is ok", async () => {
+  assert.deepEqual(await retry(["fallback", "fallback", "ok"]), ["ok", 3, [1, 2]]);
+});
+
+test("scaffold retry: a fallback on every attempt fails after the last one", async () => {
+  assert.deepEqual(await retry(["fallback", "fallback", "fallback"]), ["fallback", 3, [1, 2]]);
+});
+
+test("scaffold retry: a real failure is reported at once, not retried", async () => {
+  assert.deepEqual(await retry(["failed", "ok"]), ["failed", 1, []]);
+});
+
+// A stand-in for create-scaffold-hbar: plays one scripted outcome per run, in the order given.
+const fakeCli = `const fs = require("fs");
+const [plan, counter] = process.argv.slice(2);
+const n = fs.existsSync(counter) ? Number(fs.readFileSync(counter, "utf8")) + 1 : 1;
+fs.writeFileSync(counter, String(n));
+const step = JSON.parse(fs.readFileSync(plan, "utf8"))[n - 1];
+if (step === "ok") {
+  fs.mkdirSync("app/packages/hardhat", { recursive: true });
+  fs.writeFileSync("app/package.json", "{}");
+} else {
+  console.log(step === "fallback" ? ${JSON.stringify(foundryError)} : "Error: the template is broken");
+  process.exit(1);
+}
+`;
+
+function fakeScaffold(plan, attempts) {
+  const dir = tmpRepo({ "fake-cli.cjs": fakeCli, "plan.json": JSON.stringify(plan) });
+  const runs = path.join(dir, "runs");
+  const log = path.join(dir, "scaffold.log");
+  const args = ["--app", path.join(dir, "app"), "--framework", "hardhat", "--log", log, "--attempts", String(attempts)];
+  const command = [process.execPath, path.join(dir, "fake-cli.cjs"), path.join(dir, "plan.json"), runs];
+  return { args: [...args, "--", ...command], log, runCount: () => Number(fs.readFileSync(runs, "utf8")) };
+}
+
+test("scaffold-retry: waits for GitHub's limit to reset, then passes on the next attempt", async () => {
+  const run = fakeScaffold(["fallback", "ok"], 3);
+  const sleeps = [];
+  const messages = [];
+  const reset = Math.floor(Date.now() / 1000) + 30;
+  const { code, note } = await scaffoldMain(run.args, {
+    probe: async () => ({ remaining: 0, limit: 60, reset }),
+    sleep: async ms => sleeps.push(ms),
+    progress: message => messages.push(message),
+  });
+  assert.equal(code, 0);
+  assert.equal(run.runCount(), 2);
+  assert.match(note, /^scaffolded on attempt 2; attempt 1: the CLI did not read template.json \(FoundryValidation/);
+  assert.equal(sleeps.length, 1);
+  assert.ok(sleeps[0] >= 30_000 && sleeps[0] <= 36_000, `waited ${sleeps[0]} ms`);
+  assert.match(messages[0], /0 of 60 requests left/);
+  assert.match(fs.readFileSync(run.log, "utf8"), /FoundryValidationError[\s\S]*---- attempt 2 ----/);
+});
+
+test("scaffold-retry: a fallback on all 3 attempts exits 3 with the reason", async () => {
+  const run = fakeScaffold(["fallback", "fallback", "fallback"], 3);
+  const sleeps = [];
+  const { code, note } = await scaffoldMain(run.args, {
+    probe: async () => ({ remaining: 0, limit: 60, reset: Math.floor(Date.now() / 1000) + 600 }),
+    sleep: async ms => sleeps.push(ms),
+    progress: () => {},
+  });
+  assert.equal(code, EXIT_FALLBACK);
+  assert.equal(run.runCount(), 3);
+  assert.equal(sleeps.length, 2);
+  assert.match(note, /did not read template.json on 3 attempts and used its own defaults/);
+  assert.match(note, /0 of 60 requests left until/);
+});
+
+test("scaffold-retry CLI: exit 0 for a good scaffold, exit 1 without a retry for a broken one", () => {
+  const good = fakeScaffold(["ok"], 3);
+  const ok = runNode("scaffold-retry.mjs", good.args);
+  assert.equal(ok.status, 0, ok.stderr);
+  assert.equal(ok.stdout, "");
+  const broken = fakeScaffold(["broken", "ok"], 3);
+  const failed = runNode("scaffold-retry.mjs", broken.args);
+  assert.equal(failed.status, 1);
+  assert.equal(failed.stdout.trim(), "exit 1");
+  assert.equal(broken.runCount(), 1);
+  assert.match(fs.readFileSync(broken.log, "utf8"), /the template is broken/);
 });

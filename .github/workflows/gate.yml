@@ -5,6 +5,9 @@ name: Template gate
 # with Hardhat, the default, and on Node 22 with Foundry.
 # create-scaffold-hbar deletes template.json from the projects it creates, so in
 # those projects the detect job finds no manifest and the gate jobs are skipped.
+# The CLI reads template.json from GitHub's API without a token. When that read
+# fails on a runner, the gate scaffolds again, up to 3 times
+# (tools/gate/scaffold-retry.mjs, docs/cli-manifest-fallback.md).
 
 on:
   push:
@@ -15,6 +18,9 @@ on:
 
 permissions:
   contents: read
+
+env:
+  GATE_CLI_VERSION: "0.4.1" # create-scaffold-hbar version for every scaffold
 
 concurrency:
   group: gate-${{ github.ref }}

@@ -37,3 +37,9 @@ Each run is `npx --yes create-scaffold-hbar@0.4.1 <dir> --template retailbox-aut
   ```
 
 - This template ships the contract with Hardhat (the default) and with Foundry, and `tools/gate/local-gate.sh` checks all four combinations of framework (Hardhat, Foundry) and package manager (Yarn, npm) ([checks.md](checks.md)). So when the fallback picks Foundry and Yarn, and Foundry is installed, the result is still a working project.
+
+## In this repository's CI
+
+On 2026-10-03 the fallback failed the Hardhat leg of the template gate three times, with `FoundryValidationError` 4 seconds after create-scaffold-hbar 0.4.0 started: both attempts of run [37158403863](https://github.com/retailbox-automation/recurring-buy/actions/runs/37158403863) (Node 20.18.3) and run [37156540456](https://github.com/retailbox-automation/recurring-buy/actions/runs/37156540456) (Node 24). The other nine legs of each run passed. 4 seconds is less than the CLI's 10-second timeout, so the request did not time out: it got an answer other than 200, or a network error. The gate did not log which.
+
+The gate now runs create-scaffold-hbar 0.4.1 and scaffolds again when it sees the fallback, up to 3 times (`tools/gate/scaffold-retry.mjs`). Before each new attempt it reads GitHub's rate limit for requests without a token (`/rate_limit`, which does not count against it), prints it, and waits for the reset when no requests are left. A fallback on all 3 attempts fails the gate with that reason; any other failure fails at once.
