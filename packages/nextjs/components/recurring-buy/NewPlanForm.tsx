@@ -216,8 +216,9 @@ const Unavailable = ({ network }: { network: RecurringBuyNetwork }) => (
   <Panel title={`Not available on ${network.networkName}`}>
     {!network.mirror ? (
       <p className="m-0">
-        Recurring Buy runs on Hedera testnet or mainnet: its ticks need the Hedera Schedule Service, and this page reads
-        them from a mirror node. Switch your wallet to Hedera Testnet.
+        Recurring Buy needs the Hedera Schedule Service for its ticks and a mirror node to read them. It has run on
+        Hedera testnet; its mainnet addresses are configured, but nothing has run on mainnet yet. Switch your wallet to
+        Hedera Testnet.
       </p>
     ) : (
       <p className="m-0">

@@ -49,7 +49,7 @@ forge verify-contract <address> contracts/RecurringBuy.sol:RecurringBuy --chain-
   --constructor-args $(cast abi-encode "constructor(address,uint256)" 0x0000000000000000000000000000000000159398 <reserve gas price>)
 ```
 
-It gave an exact match for the contract above.
+For the contract above Sourcify's v2 API reports an `exact_match` of the runtime code; the creation code was not compared.
 
 ## Format and lint
 
