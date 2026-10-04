@@ -181,6 +181,10 @@ Gas, fees and balances for every row are in runs E to J of [docs/testnet-finding
 
 The labels (C1, F2, …) are findings in [docs/testnet-findings.md](docs/testnet-findings.md).
 
+## Pitfalls we measured
+
+[docs/pitfalls.md](docs/pitfalls.md) lists ten ways a recurring buy on Hedera fails that we hit or measured on testnet, each with its finding and the code and test that keep it from happening here: a tick guarded by time, a tick that reverts as a whole, too little gas left for the next schedule, an automatic association inside a swap, a wrap without a WHBAR association, an approval above a token's maximum supply, fees taken from the block header, an expired schedule on the mirror node, a tick read by its nonce, and a `stop` that runs out of gas.
+
 ## Environment variables
 
 None is required: the app builds and runs without a `.env`. The Foundry variant uses no `.env` at all.
@@ -214,7 +218,7 @@ A project created from the template has `packages/hardhat` or `packages/foundry`
 
 ## More
 
-[How it works](docs/how-it-works.md) (the contract, the Hedera services in a tick, the layout, known limitations) · [Costs](docs/costs.md) · [Checking a tick](docs/verify-ticks.md) · [Template checks and Hedera Harness](docs/checks.md) · [When the CLI cannot read template.json](docs/cli-manifest-fallback.md) · [Everything measured on testnet](docs/testnet-findings.md) · [The Foundry package](packages/foundry/README.md) · [AGENTS.md](AGENTS.md), for changing the template with or without a coding agent.
+[How it works](docs/how-it-works.md) (the contract, the Hedera services in a tick, the layout, known limitations) · [Costs](docs/costs.md) · [Checking a tick](docs/verify-ticks.md) · [Template checks and Hedera Harness](docs/checks.md) · [When the CLI cannot read template.json](docs/cli-manifest-fallback.md) · [Everything measured on testnet](docs/testnet-findings.md) · [Pitfalls we measured](docs/pitfalls.md) · [The Foundry package](packages/foundry/README.md) · [AGENTS.md](AGENTS.md), for changing the template with or without a coding agent.
 
 ## License
 
