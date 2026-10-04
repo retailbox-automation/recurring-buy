@@ -20,19 +20,18 @@ You describe a plan: "buy SAUCE with 0.05 WHBAR every day, four times, and never
 Steps 2 to 4 repeat until the plan has run all its ticks, you stop it, or your allowance or balance runs out. Every plan pays for its own ticks from a gas deposit in HBAR, and whatever it does not spend comes back to you. [docs/how-it-works.md](docs/how-it-works.md) explains why this needs no bot on Hedera.
 
 ```mermaid
-flowchart LR
+flowchart TB
+  hss["Hedera Schedule Service<br/>HIP-1215"]
   wallet["Your wallet<br/>the token you spend"]
   allowance["HTS allowance<br/>the plan's total"]
-  hss["Hedera Schedule Service<br/>HIP-1215"]
   tick["RecurringBuy<br/>tick(planId)"]
   pool["SaucerSwap V2 pool"]
   out["Your wallet<br/>the token you buy"]
+  hss <-->|"2 runs the tick at its second<br/>4 the tick schedules the next one"| tick
   wallet -->|"1 approve"| allowance
-  hss -->|"2 at the scheduled second"| tick
   allowance -->|"3 transferFrom: one buy"| tick
   tick -->|"3 exactInput, never below the floor"| pool
   pool -->|"recipient: you"| out
-  tick -->|"4 scheduleCall: the next tick"| hss
 ```
 
 ## Screens
