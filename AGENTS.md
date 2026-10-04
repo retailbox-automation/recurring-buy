@@ -139,4 +139,4 @@ npx hedera-harness validate                      # install, lint, build, test, t
 
 ## Hedera Harness
 
-The recipe is in `.harness/` (schema v3, `hedera-harness` pinned to `2.0.0-rc.4`). `validate` and `doctor` run without an agent or keys. `yarn harness:run` starts an agent run on a new `harness/run-*` branch and needs a clean tree. Chain validation, when enabled, reads `HEDERA_OPERATOR_ID` and `HEDERA_OPERATOR_KEY` from the shell; never write them to a file in the repository.
+The recipe is in `.harness/` (schema v3, `hedera-harness` pinned to `2.0.0-rc.4`). `validate` and `doctor` run without an agent or keys. `yarn harness:run` builds the feature written in `.harness/prd.md` on a new `harness/run-*` branch and needs a clean tree; the file describes the app and names no feature until someone writes one. Chain validation, when enabled, reads `HEDERA_OPERATOR_ID` and `HEDERA_OPERATOR_KEY` from the shell; never write them to a file in the repository.

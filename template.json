@@ -42,8 +42,9 @@
               "text": "Open /plans/new in the app, with a wallet on Hedera Testnet."
             },
             {
-              "label": "Develop with Hedera Harness",
-              "command": "{run:harness:run}"
+              "label": "Build a feature with Hedera Harness",
+              "command": "{run:harness:run}",
+              "text": "First describe it under \"Feature to implement\" in .harness/prd.md and commit. Needs a logged-in Claude Code or Cursor CLI. In a project created with npm, change the recipe first as .harness/README.md says."
             }
           ]
         }

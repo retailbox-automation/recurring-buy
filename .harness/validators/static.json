@@ -12,6 +12,8 @@
     "required": [
       "README.md",
       "AGENTS.md",
+      "CLAUDE.md",
+      ".harness/prd.md",
       "LICENSE",
       "package.json",
       "packages/nextjs/package.json"

@@ -5,6 +5,7 @@
 | File | Purpose |
 | --- | --- |
 | `spec.yaml` | baseline commands and the validators to run |
+| `prd.md` | the brief `harness:run` gives the agent: the app as it is, and the feature to build, which you write |
 | `validators/static.json` | required files, forbidden `.env` files, `template.json` and harness pin assertions (checked only where `template.json` exists; the CLI deletes it from scaffolded projects) |
 | `validators/yarn.json` | install, lint with zero warnings, contract compile and Next.js build, contract tests; each command picks `hardhat:` or `foundry:` scripts by which package the project has |
 | `validators/npm.json` | the same commands for a project created with `--package-manager npm` |
@@ -13,7 +14,7 @@
 ```bash
 npx hedera-harness doctor     # checks the setup; no agent, no keys
 npx hedera-harness validate   # install, lint, build, test, secret scan, then renders the core routes in a browser
-yarn harness:run              # agent run on a new harness/run-* branch; needs a clean tree and a logged-in Claude Code or Cursor CLI
+yarn harness:run              # builds the feature in prd.md on a new harness/run-* branch; needs a clean tree and a logged-in Claude Code or Cursor CLI
 ```
 
 The recipe runs Yarn commands. create-scaffold-hbar copies this directory unchanged into npm projects, so in a project created with `--package-manager npm`:
@@ -22,6 +23,6 @@ The recipe runs Yarn commands. create-scaffold-hbar copies this directory unchan
 2. Change the baseline commands to `npm install --legacy-peer-deps` and `npm run next:build`.
 3. Change `server.command` in `validators/playwright-smoke.yaml` to `npm run next:start`.
 
-Feature increments (`prd:` in `spec.yaml`) are not written yet, so `doctor` reports the missing PRD and `harness:run` has nothing to build. Chain validation, once enabled, reads `HEDERA_OPERATOR_ID` and `HEDERA_OPERATOR_KEY` (ECDSA) from the shell; they never go into a file in the repository.
+`prd.md` names no feature until you write one under "Feature to implement"; commit it, then run `harness:run`. Chain validation, once enabled, reads `HEDERA_OPERATOR_ID` and `HEDERA_OPERATOR_KEY` (ECDSA) from the shell; they never go into a file in the repository.
 
 Runtime output (`runs/`, `runtime/`, `cache/`, `.skill-cache/`) is gitignored.

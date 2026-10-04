@@ -2,9 +2,10 @@ schemaVersion: 3
 
 name: recurring-buy
 description: >-
-  Recurring buys on SaucerSwap V2, run by the Hedera Schedule Service. No feature
-  increments are written yet, so this recipe is the template's own quality check:
-  install, lint, build, test, no secrets, and the core routes render.
+  Recurring buys on SaucerSwap V2, run by the Hedera Schedule Service. prd.md
+  describes the app as it is and names no feature until you write one; until
+  then this recipe is the template's own quality check: install, lint, build,
+  test, no secrets, and the core routes render.
 
 # Yarn recipe. create-scaffold-hbar does not rewrite .harness/ for npm projects;
 # in an npm project point validators.commands at .harness/validators/npm.json
@@ -16,7 +17,9 @@ baseline:
     - name: build
       command: yarn next:build
 
-# prd: feature increments (.harness/prds/NN-*.md) go here.
+# The brief harness:run hands to the agent. For a larger feature, list ordered
+# increments instead (.harness/prds/NN-*.md), each with its own attempt budget.
+prd: .harness/prd.md
 
 validators:
   static: .harness/validators/static.json
